@@ -918,6 +918,18 @@
       <button class="drawer-close" data-close><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
   </div>
+  <div style="display: flex; gap: 6px; margin-bottom: 12px; align-items: center;">
+    <div style="position: relative; flex: 1;">
+      <input id="plSearch" type="text" placeholder="Buscar canción, artista, álbum..." style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; color: white; padding: 10px 14px 10px 38px; font-size: 13px; font-family: inherit; outline: none;">
+      <svg style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: rgba(255,255,255,0.5);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <button class="icon-btn" id="plSortBtn" title="Ordenar" style="flex-shrink: 0;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+    </button>
+    <button class="icon-btn" id="plClearBtn" title="Borrar todo" style="flex-shrink: 0;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+    </button>
+  </div>
   <div class="drawer-content">
     <div id="playlist">
       <div class="empty-state" id="plEmpty">
@@ -2378,10 +2390,314 @@ document.addEventListener('paste', (e) => {
   }
 });
 
+// ========================================
+// INDEXEDDB - PERSIST MUSIC LIBRARY
+// ========================================
+
+const DB_NAME = 'neonwave_lib';
+const DB_VERSION = 1;
+const STORE = 'tracks';
+let _db = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    if (_db) { resolve(_db); return; }
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => { _db = req.result; resolve(_db); };
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE)) {
+        const store = db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+        store.createIndex('name', 'name', { unique: false });
+        store.createIndex('addedAt', 'addedAt', { unique: false });
+      }
+    };
+  });
+}
+
+async function dbAddTrack(item) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const store = tx.objectStore(STORE);
+    // Convert blob to ArrayBuffer for storage
+    const reader = new FileReader();
+    reader.onload = () => {
+      const rec = {
+        name: item.name,
+        title: item.title,
+        artist: item.artist,
+        album: item.album,
+        addedAt: Date.now(),
+        fileType: item.file.type,
+        fileSize: item.file.size,
+        data: reader.result,
+        picData: null,
+        picType: null,
+      };
+      // Also persist artwork if exists - we need to fetch from picUrl blob
+      if (item.picUrl) {
+        fetch(item.picUrl).then(r => r.blob()).then(b => {
+          const r2 = new FileReader();
+          r2.onload = () => {
+            rec.picData = r2.result;
+            rec.picType = b.type;
+            const req = store.add(rec);
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+          };
+          r2.readAsArrayBuffer(b);
+        }).catch(() => {
+          const req = store.add(rec);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      } else {
+        const req = store.add(rec);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      }
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(item.file);
+  });
+}
+
+async function dbGetAllTracks() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readonly');
+    const store = tx.objectStore(STORE);
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbDeleteTrack(id) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const store = tx.objectStore(STORE);
+    const req = store.delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbClearAll() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const store = tx.objectStore(STORE);
+    const req = store.clear();
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// Convert stored record into a playable queue item
+function trackRecToItem(rec) {
+  const blob = new Blob([rec.data], { type: rec.fileType || 'audio/mpeg' });
+  const url = URL.createObjectURL(blob);
+  const item = {
+    dbId: rec.id,
+    url,
+    name: rec.name,
+    title: rec.title || rec.name,
+    artist: rec.artist || 'Desconocido',
+    album: rec.album || '',
+    picUrl: null,
+    file: null,  // not needed for playback
+  };
+  if (rec.picData) {
+    const picBlob = new Blob([rec.picData], { type: rec.picType || 'image/jpeg' });
+    item.picUrl = URL.createObjectURL(picBlob);
+  }
+  return item;
+}
+
+// Load library on startup
+async function loadLibrary() {
+  try {
+    const recs = await dbGetAllTracks();
+    recs.sort((a, b) => (a.addedAt || 0) - (b.addedAt || 0));
+    state.queue = recs.map(trackRecToItem);
+    renderPlaylist();
+    if (state.queue.length > 0) {
+      // Load first track but don't autoplay
+      state.index = 0;
+      audio.src = state.queue[0].url;
+      updateNowPlaying();
+    }
+  } catch(e) { console.warn('Library load failed:', e); }
+}
+
+// Override file input handler to also save to DB
+$('fileInput').removeEventListener && $('fileInput').removeEventListener('change', null);
+const newFileHandler = async (e) => {
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
+  const wasEmpty = state.queue.length === 0;
+  toast(`Guardando ${files.length}...`);
+  for (const file of files) {
+    const url = URL.createObjectURL(file);
+    const baseName = file.name.replace(/\.[^.]+$/, '');
+    const item = { url, name: baseName, file, title: baseName, artist: 'Desconocido', album: '', picUrl: null };
+    await parseTagsForItem(item);
+    try {
+      const id = await dbAddTrack(item);
+      item.dbId = id;
+    } catch(err) { console.warn('save failed:', err); }
+    state.queue.push(item);
+  }
+  renderPlaylist();
+  $('fileInput').value = '';
+  if (wasEmpty && state.queue.length) loadIndex(0, true);
+  else toast(`+${files.length} GUARDADAS`);
+};
+// Replace any existing handler
+const fileInputEl = $('fileInput');
+const newFileInput = fileInputEl.cloneNode(true);
+fileInputEl.parentNode.replaceChild(newFileInput, fileInputEl);
+newFileInput.addEventListener('change', newFileHandler);
+// Re-bind add button
+$('addBtn').onclick = () => $('fileInput').click();
+
+// Override removeFromQueue to also delete from DB
+const origRemove = removeFromQueue;
+removeFromQueue = async function(i) {
+  const item = state.queue[i];
+  if (item && item.dbId) {
+    try { await dbDeleteTrack(item.dbId); } catch(e) {}
+  }
+  origRemove(i);
+};
+
+// ========================================
+// PLAYLIST SEARCH + SORT
+// ========================================
+
+let plFilter = '';
+let plSort = 'added';  // added | title | artist | album
+
+const origRenderPlaylist = renderPlaylist;
+renderPlaylist = function() {
+  const pl = $('playlist');
+  $('plCount').textContent = state.queue.length;
+  pl.querySelectorAll('.pl-item').forEach(el => el.remove());
+  const empty = $('plEmpty');
+  if (!state.queue.length) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  // Build filtered + sorted view
+  const filter = plFilter.toLowerCase().trim();
+  let view = state.queue.map((item, originalIdx) => ({ item, originalIdx }));
+  if (filter) {
+    view = view.filter(({item}) => {
+      const t = (item.title || item.name || '').toLowerCase();
+      const a = (item.artist || '').toLowerCase();
+      const al = (item.album || '').toLowerCase();
+      return t.includes(filter) || a.includes(filter) || al.includes(filter);
+    });
+  }
+  if (plSort === 'title') view.sort((a,b) => (a.item.title || a.item.name || '').localeCompare(b.item.title || b.item.name || ''));
+  else if (plSort === 'artist') view.sort((a,b) => (a.item.artist || '').localeCompare(b.item.artist || ''));
+  else if (plSort === 'album') view.sort((a,b) => (a.item.album || '').localeCompare(b.item.album || ''));
+
+  if (view.length === 0 && filter) {
+    const noRes = document.createElement('div');
+    noRes.className = 'pl-item';
+    noRes.style.justifyContent = 'center';
+    noRes.style.color = 'rgba(255,255,255,0.5)';
+    noRes.style.fontStyle = 'italic';
+    noRes.textContent = `Sin resultados para "${filter}"`;
+    pl.appendChild(noRes);
+    return;
+  }
+
+  view.forEach(({item, originalIdx}) => {
+    const i = originalIdx;
+    const div = document.createElement('div');
+    div.className = 'pl-item' + (i === state.index ? ' current' : '');
+    div.innerHTML = `<div class="pl-num">${String(i+1).padStart(2,'0')}</div><div class="pl-info"><div class="pl-name">${escapeHtml(item.title || item.name)}</div><div class="pl-meta">${escapeHtml(item.artist || 'Desconocido')}${item.album ? ' · ' + escapeHtml(item.album) : ''}</div></div><button class="pl-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
+    div.addEventListener('click', (e) => {
+      if (e.target.closest('.pl-remove')) return;
+      loadIndex(i, true); closeAllDrawers();
+    });
+    div.querySelector('.pl-remove').addEventListener('click', (e) => { e.stopPropagation(); removeFromQueue(i); });
+    pl.appendChild(div);
+  });
+};
+
+// Search input
+$('plSearch').addEventListener('input', (e) => {
+  plFilter = e.target.value;
+  renderPlaylist();
+});
+
+// Sort cycle
+const sortLabels = { added: 'AGREGADAS', title: 'TÍTULO', artist: 'ARTISTA', album: 'ÁLBUM' };
+$('plSortBtn').addEventListener('click', () => {
+  const order = ['added', 'title', 'artist', 'album'];
+  const idx = order.indexOf(plSort);
+  plSort = order[(idx + 1) % order.length];
+  toast('ORDENAR: ' + sortLabels[plSort]);
+  renderPlaylist();
+});
+
+// Clear all
+$('plClearBtn').addEventListener('click', async () => {
+  if (!confirm('¿Borrar TODAS las canciones de la biblioteca?')) return;
+  pause();
+  try { await dbClearAll(); } catch(e) {}
+  state.queue = [];
+  state.index = -1;
+  audio.src = '';
+  updateNowPlaying();
+  renderPlaylist();
+  toast('BIBLIOTECA BORRADA');
+});
+
+// Load saved library at startup
+loadLibrary();
+
+// ========================================
+// AUTO-UPDATE (like BridgeControl)
+// ========================================
+
+// Force reload when SW updates
+if ('serviceWorker' in navigator) {
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+}
+
 // Register service worker for PWA installability
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(err => console.log('SW reg failed:', err));
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      // Check for updates every time app opens
+      reg.update();
+      // If there's a waiting worker, activate it
+      if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      // Listen for new workers
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // New version available - activate immediately
+              newWorker.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        }
+      });
+    }).catch(err => console.log('SW reg failed:', err));
   });
 }
 </script>
