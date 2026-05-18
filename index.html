@@ -2024,19 +2024,24 @@ function toast(msg) { const el = $('toast'); el.textContent = msg; el.classList.
 
 document.addEventListener('gesturestart', e => e.preventDefault());
 
+// Global YT state placeholder (in case YT block fails)
+window.YT_state = { active: false, player: null };
+function ytIsActive() { return window.YT_state && window.YT_state.active; }
+function ytStop() { if (window._stopYt) window._stopYt(); }
+
 // ========================================
 // YOUTUBE INTEGRATION
 // ========================================
 
-const YT = {
-  player: null,
-  ready: false,
-  currentVideoId: null,
-  currentTitle: null,
-  active: false,  // is YT currently playing instead of local audio?
-  history: [],
-  progressInterval: null,
-};
+try {
+
+const YT = window.YT_state;
+YT.ready = false;
+YT.currentVideoId = null;
+YT.currentTitle = null;
+YT.active = false;
+YT.history = [];
+YT.progressInterval = null;
 
 // Load YT history
 try { YT.history = JSON.parse(localStorage.getItem('yt_history') || '[]'); } catch(_) { YT.history = []; }
@@ -2218,50 +2223,51 @@ function stopYt() {
   }
   releaseWakeLock();
 }
+window._stopYt = stopYt;
 
 // === HOOK PLAYBACK CONTROLS ===
-// Override play/pause/next/prev to also handle YT
-const originalPlay = play;
-const originalPause = pause;
-const originalNext = next;
-const originalPrev = prev;
-const originalTogglePlay = togglePlay;
+// Wrap controls to also handle YT (use window.* to allow reassignment)
+const originalPlay = window.play || play;
+const originalPause = window.pause || pause;
+const originalTogglePlay = window.togglePlay || togglePlay;
+const originalSeek = window.seekFromEvent || seekFromEvent;
+const origLoadIndex = window.loadIndex || loadIndex;
 
-play = function() {
+function ytPlay() {
   if (YT.active && YT.player) {
     try { YT.player.playVideo(); } catch(e) {}
-    return;
+    return true;
   }
-  originalPlay();
-};
-
-pause = function() {
+  return false;
+}
+function ytPause() {
   if (YT.active && YT.player) {
     try { YT.player.pauseVideo(); } catch(e) {}
-    return;
+    return true;
   }
-  originalPause();
-};
-
-togglePlay = function() {
+  return false;
+}
+function ytToggle() {
   if (YT.active && YT.player) {
     try {
       const st = YT.player.getPlayerState();
       if (st === 1) YT.player.pauseVideo();
       else YT.player.playVideo();
     } catch(e) {}
-    return;
+    return true;
   }
-  originalTogglePlay();
-};
+  return false;
+}
 
-// Re-attach event listeners with new functions
-$('playBtn').onclick = togglePlay;
-$('discWrap').onclick = (e) => { e.stopPropagation(); togglePlay(); };
+// Re-bind buttons with YT-aware handlers
+$('playBtn').onclick = () => { if (!ytToggle()) originalTogglePlay(); };
+$('discWrap').onclick = (e) => { e.stopPropagation(); if (!ytToggle()) originalTogglePlay(); };
+$('nextBtn').onclick = () => { if (YT.active) stopYt(); next(); };
+$('prevBtn').onclick = () => { if (YT.active) stopYt(); prev(); };
 
-// Seek with YT
-const originalSeek = seekFromEvent;
-seekFromEvent = function(e) {
+// Re-bind progress bar for YT seek
+$('progressBar').onpointerdown = (e) => {
+  seeking = true;
   if (YT.active && YT.player) {
     const rect = $('progressBar').getBoundingClientRect();
     const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
@@ -2270,16 +2276,9 @@ seekFromEvent = function(e) {
       const dur = YT.player.getDuration();
       if (dur) YT.player.seekTo(pct * dur, true);
     } catch(e) {}
-    return;
+  } else {
+    originalSeek(e);
   }
-  originalSeek(e);
-};
-
-// When local play() is called from anywhere, stop YT first
-const origLoadIndex = loadIndex;
-loadIndex = function(i, autoplay) {
-  if (YT.active) stopYt();
-  origLoadIndex(i, autoplay);
 };
 
 // === YOUTUBE UI HANDLERS ===
@@ -2390,9 +2389,15 @@ document.addEventListener('paste', (e) => {
   }
 });
 
+} catch(err) {
+  console.error('YouTube init failed:', err);
+}
+
 // ========================================
 // INDEXEDDB - PERSIST MUSIC LIBRARY
 // ========================================
+
+try {
 
 const DB_NAME = 'neonwave_lib';
 const DB_VERSION = 1;
@@ -2524,9 +2529,9 @@ async function loadLibrary() {
     const recs = await dbGetAllTracks();
     recs.sort((a, b) => (a.addedAt || 0) - (b.addedAt || 0));
     state.queue = recs.map(trackRecToItem);
-    renderPlaylist();
+    if (typeof renderPlaylistWithFilter === 'function') renderPlaylistWithFilter();
+    else renderPlaylist();
     if (state.queue.length > 0) {
-      // Load first track but don't autoplay
       state.index = 0;
       audio.src = state.queue[0].url;
       updateNowPlaying();
@@ -2535,8 +2540,10 @@ async function loadLibrary() {
 }
 
 // Override file input handler to also save to DB
-$('fileInput').removeEventListener && $('fileInput').removeEventListener('change', null);
-const newFileHandler = async (e) => {
+const fileInputEl = $('fileInput');
+const newFileInput = fileInputEl.cloneNode(true);
+fileInputEl.parentNode.replaceChild(newFileInput, fileInputEl);
+newFileInput.addEventListener('change', async (e) => {
   const files = Array.from(e.target.files || []);
   if (!files.length) return;
   const wasEmpty = state.queue.length === 0;
@@ -2552,38 +2559,32 @@ const newFileHandler = async (e) => {
     } catch(err) { console.warn('save failed:', err); }
     state.queue.push(item);
   }
-  renderPlaylist();
-  $('fileInput').value = '';
+  renderPlaylistWithFilter();
+  newFileInput.value = '';
   if (wasEmpty && state.queue.length) loadIndex(0, true);
   else toast(`+${files.length} GUARDADAS`);
-};
-// Replace any existing handler
-const fileInputEl = $('fileInput');
-const newFileInput = fileInputEl.cloneNode(true);
-fileInputEl.parentNode.replaceChild(newFileInput, fileInputEl);
-newFileInput.addEventListener('change', newFileHandler);
+});
 // Re-bind add button
-$('addBtn').onclick = () => $('fileInput').click();
+$('addBtn').onclick = () => newFileInput.click();
 
-// Override removeFromQueue to also delete from DB
-const origRemove = removeFromQueue;
-removeFromQueue = async function(i) {
+// Wrap removeFromQueue to also delete from DB
+const origRemoveFromQueue = removeFromQueue;
+async function removeFromQueueWithDB(i) {
   const item = state.queue[i];
   if (item && item.dbId) {
     try { await dbDeleteTrack(item.dbId); } catch(e) {}
   }
-  origRemove(i);
-};
+  origRemoveFromQueue(i);
+}
 
 // ========================================
 // PLAYLIST SEARCH + SORT
 // ========================================
 
 let plFilter = '';
-let plSort = 'added';  // added | title | artist | album
+let plSort = 'added';
 
-const origRenderPlaylist = renderPlaylist;
-renderPlaylist = function() {
+function renderPlaylistWithFilter() {
   const pl = $('playlist');
   $('plCount').textContent = state.queue.length;
   pl.querySelectorAll('.pl-item').forEach(el => el.remove());
@@ -2591,7 +2592,6 @@ renderPlaylist = function() {
   if (!state.queue.length) { empty.style.display = 'block'; return; }
   empty.style.display = 'none';
 
-  // Build filtered + sorted view
   const filter = plFilter.toLowerCase().trim();
   let view = state.queue.map((item, originalIdx) => ({ item, originalIdx }));
   if (filter) {
@@ -2626,42 +2626,69 @@ renderPlaylist = function() {
       if (e.target.closest('.pl-remove')) return;
       loadIndex(i, true); closeAllDrawers();
     });
-    div.querySelector('.pl-remove').addEventListener('click', (e) => { e.stopPropagation(); removeFromQueue(i); });
+    div.querySelector('.pl-remove').addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeFromQueueWithDB(i);
+    });
     pl.appendChild(div);
   });
-};
+}
+
+// Replace renderPlaylist calls with new function - monkey-patch via wrapper
+const _origRender = renderPlaylist;
+window.renderPlaylist = renderPlaylistWithFilter;
+// Also override on the global so existing code uses new version
+// (the original `renderPlaylist` references in already-bound listeners still call old; that's ok)
+
+// Periodically refresh to pick up new state
+setInterval(() => {
+  // re-render only if drawer is open
+  if ($('plDrawer') && $('plDrawer').classList.contains('open')) {
+    renderPlaylistWithFilter();
+  }
+}, 1500);
 
 // Search input
 $('plSearch').addEventListener('input', (e) => {
   plFilter = e.target.value;
-  renderPlaylist();
+  renderPlaylistWithFilter();
 });
 
-// Sort cycle
 const sortLabels = { added: 'AGREGADAS', title: 'TÍTULO', artist: 'ARTISTA', album: 'ÁLBUM' };
 $('plSortBtn').addEventListener('click', () => {
   const order = ['added', 'title', 'artist', 'album'];
   const idx = order.indexOf(plSort);
   plSort = order[(idx + 1) % order.length];
   toast('ORDENAR: ' + sortLabels[plSort]);
-  renderPlaylist();
+  renderPlaylistWithFilter();
 });
 
-// Clear all
 $('plClearBtn').addEventListener('click', async () => {
   if (!confirm('¿Borrar TODAS las canciones de la biblioteca?')) return;
-  pause();
+  try { audio.pause(); } catch(e) {}
+  state.playing = false;
+  updatePlayUI();
   try { await dbClearAll(); } catch(e) {}
   state.queue = [];
   state.index = -1;
   audio.src = '';
   updateNowPlaying();
-  renderPlaylist();
+  renderPlaylistWithFilter();
   toast('BIBLIOTECA BORRADA');
 });
 
-// Load saved library at startup
-loadLibrary();
+// Re-open playlist drawer triggers fresh render
+const origOpenPlClick = $('openPlBtn').onclick;
+$('openPlBtn').addEventListener('click', () => {
+  setTimeout(renderPlaylistWithFilter, 50);
+});
+
+// Load library on startup (deferred so UI is ready)
+setTimeout(() => { loadLibrary(); }, 500);
+
+} catch(err) {
+  console.error('Library/Search init failed:', err);
+}
 
 // ========================================
 // AUTO-UPDATE (like BridgeControl)
