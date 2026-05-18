@@ -12,6 +12,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body {
@@ -586,6 +587,148 @@
   .sec-title { font-family: 'Courier New', monospace; font-size: 11px; letter-spacing: 2px; color: rgba(255,255,255,0.5); text-transform: uppercase; margin: 18px 0 10px; }
 
   input[type="file"] { display: none; }
+
+  /* === YOUTUBE STYLES === */
+  .yt-input-row {
+    display: flex; gap: 8px;
+    margin-bottom: 14px;
+  }
+  .yt-input {
+    flex: 1;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    color: white;
+    padding: 12px 14px;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+  }
+  .yt-input:focus { border-color: var(--c1); }
+  .yt-input::placeholder { color: rgba(255,255,255,0.4); }
+  .yt-btn {
+    background: linear-gradient(135deg, #ff0000, #ff4444);
+    color: white;
+    border: none;
+    padding: 12px 18px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .yt-btn:active { transform: scale(0.95); }
+  .yt-btn.secondary {
+    background: rgba(255,255,255,0.08);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+  .yt-help {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 12px;
+    letter-spacing: 0.5px;
+    line-height: 1.6;
+  }
+  .yt-history {
+    margin-top: 14px;
+  }
+  .yt-history-title {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .yt-history-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 11px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.2s;
+  }
+  .yt-history-item:active { transform: scale(0.98); background: rgba(255,255,255,0.08); }
+  .yt-history-thumb {
+    width: 56px; height: 42px; border-radius: 6px;
+    background: #222;
+    background-size: cover; background-position: center;
+    flex-shrink: 0;
+  }
+  .yt-history-info { flex: 1; min-width: 0; }
+  .yt-history-name {
+    font-size: 13px; color: white; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .yt-history-id {
+    font-family: 'Courier New', monospace;
+    font-size: 10px; color: rgba(255,255,255,0.4);
+    margin-top: 2px;
+  }
+  .yt-history-remove {
+    width: 28px; height: 28px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .yt-history-remove:active { background: color-mix(in srgb, var(--c2) 20%, transparent); color: var(--c2); }
+  .yt-history-remove svg { width: 14px; height: 14px; }
+
+  /* YouTube player container (hidden iframe) */
+  .yt-player {
+    position: fixed;
+    width: 1px; height: 1px;
+    bottom: -10px; right: -10px;
+    opacity: 0.01;
+    pointer-events: none;
+    z-index: -1;
+  }
+  /* When YT mode active, show small floating thumb */
+  .yt-mini {
+    position: fixed;
+    bottom: 14px; left: 14px;
+    z-index: 80;
+    padding: 8px 14px;
+    background: rgba(0,0,0,0.85);
+    border: 1px solid #ff0000;
+    border-radius: 999px;
+    color: white;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    font-family: 'Courier New', monospace;
+    box-shadow: 0 6px 20px rgba(255,0,0,0.3);
+  }
+  .yt-mini.show { display: flex; }
+  .yt-mini .dot {
+    width: 8px; height: 8px;
+    background: #ff0000;
+    border-radius: 50%;
+    animation: pulseDot 1.4s ease-in-out infinite;
+  }
+  @keyframes pulseDot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .yt-mini button {
+    background: transparent; border: none;
+    color: white; cursor: pointer;
+    padding: 0; margin-left: 6px;
+    display: flex; align-items: center;
+  }
+  .yt-mini button svg { width: 14px; height: 14px; }
+
   .toast {
     position: fixed; left: 50%; top: 50%;
     transform: translate(-50%, -50%) translateY(20px);
@@ -742,7 +885,7 @@
       <button class="icon-btn" id="speedBtn" title="Velocidad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
       <button class="icon-btn" id="brightBtn" title="Brillo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button>
       <button class="icon-btn" id="bgToggleBtn" title="Solo viz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></button>
-      <button class="icon-btn" id="lyricsBtn" title="Letras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></button>
+      <button class="icon-btn" id="ytBtn" title="YouTube" style="color: #ff4444; border-color: rgba(255,68,68,0.4);"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.582,6.186c-0.23-0.86-0.908-1.538-1.768-1.768C18.254,4,12,4,12,4S5.746,4,4.186,4.418c-0.86,0.23-1.538,0.908-1.768,1.768C2,7.746,2,12,2,12s0,4.254,0.418,5.814c0.23,0.86,0.908,1.538,1.768,1.768C5.746,20,12,20,12,20s6.254,0,7.814-0.418c0.861-0.23,1.538-0.908,1.768-1.768C22,16.254,22,12,22,12S22,7.746,21.582,6.186z M10,15.464V8.536L16,12L10,15.464z"/></svg></button>
       <button class="icon-btn" id="settingsBtn" title="Más"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
     </div>
   </div>
@@ -869,6 +1012,43 @@
   </div>
 </div>
 
+<!-- YOUTUBE DRAWER -->
+<div class="drawer" id="ytDrawer">
+  <div class="drawer-head">
+    <div class="drawer-title" style="color: #ff4444;">▶ YOUTUBE</div>
+    <button class="drawer-close" data-close><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  </div>
+  <div class="drawer-content">
+    <div class="yt-help">
+      Pega el link o ID del video de YouTube.<br>
+      Ejemplos:<br>
+      • https://www.youtube.com/watch?v=dQw4w9WgXcQ<br>
+      • https://youtu.be/dQw4w9WgXcQ<br>
+      • dQw4w9WgXcQ
+    </div>
+    <div class="yt-input-row">
+      <input class="yt-input" id="ytInput" type="text" placeholder="Link de YouTube o ID...">
+      <button class="yt-btn" id="ytPlayBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+        REPRODUCIR
+      </button>
+    </div>
+    <button class="yt-btn secondary" id="ytSearchBtn" style="width: 100%; justify-content: center; padding: 12px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      BUSCAR EN YOUTUBE (abre en pestaña nueva)
+    </button>
+
+    <div class="yt-history">
+      <div class="yt-history-title">HISTORIAL · <span id="ytHistCount">0</span></div>
+      <div id="ytHistList">
+        <div class="empty-state" id="ytHistEmpty" style="padding: 30px 20px;">
+          <p>SIN HISTORIAL TODAVÍA</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="drawer" id="settingsDrawer">
   <div class="drawer-head">
     <div class="drawer-title">OPCIONES</div>
@@ -887,6 +1067,18 @@
 <input type="file" id="fileInput" accept="audio/*" multiple>
 <div class="toast" id="toast"></div>
 <audio id="audio" preload="metadata"></audio>
+
+<!-- YouTube iframe (hidden) -->
+<div class="yt-player"><div id="ytPlayer"></div></div>
+
+<!-- YouTube mini badge -->
+<div class="yt-mini" id="ytMini">
+  <span class="dot"></span>
+  <span id="ytMiniLabel">YOUTUBE</span>
+  <button id="ytMiniStop">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+</div>
 
 <script>
 const $ = (id) => document.getElementById(id);
@@ -1819,6 +2011,372 @@ let toastTimer = null;
 function toast(msg) { const el = $('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 1700); }
 
 document.addEventListener('gesturestart', e => e.preventDefault());
+
+// ========================================
+// YOUTUBE INTEGRATION
+// ========================================
+
+const YT = {
+  player: null,
+  ready: false,
+  currentVideoId: null,
+  currentTitle: null,
+  active: false,  // is YT currently playing instead of local audio?
+  history: [],
+  progressInterval: null,
+};
+
+// Load YT history
+try { YT.history = JSON.parse(localStorage.getItem('yt_history') || '[]'); } catch(_) { YT.history = []; }
+
+// Called by YouTube API when ready
+window.onYouTubeIframeAPIReady = function() {
+  YT.player = new window.YT.Player('ytPlayer', {
+    height: '1',
+    width: '1',
+    playerVars: {
+      autoplay: 0,
+      controls: 0,
+      disablekb: 1,
+      fs: 0,
+      modestbranding: 1,
+      playsinline: 1,
+      rel: 0,
+    },
+    events: {
+      onReady: () => { YT.ready = true; },
+      onStateChange: onYtStateChange,
+      onError: onYtError
+    }
+  });
+};
+
+function onYtStateChange(event) {
+  // 0=ended, 1=playing, 2=paused, 3=buffering, 5=cued
+  if (event.data === 1) {
+    state.playing = true;
+    updatePlayUI();
+    // Get title
+    try {
+      const data = YT.player.getVideoData();
+      if (data && data.title) {
+        YT.currentTitle = data.title;
+        $('trackTitle').textContent = data.title;
+        $('trackArtist').textContent = 'YOUTUBE · ' + (data.author || '');
+        // Update history with title
+        updateYtHistoryTitle(YT.currentVideoId, data.title, data.author);
+        updateMediaSession();
+      }
+    } catch(e) {}
+    startYtProgress();
+    requestWakeLock();
+  } else if (event.data === 2) {
+    state.playing = false;
+    updatePlayUI();
+    stopYtProgress();
+  } else if (event.data === 0) {
+    state.playing = false;
+    updatePlayUI();
+    stopYtProgress();
+    // Auto-next: prefer next in queue, otherwise stay
+    if (state.queue.length > 0 && state.index >= 0) {
+      next();
+    }
+  }
+}
+
+function onYtError(event) {
+  let msg = 'Error YouTube';
+  if (event.data === 2) msg = 'ID inválido';
+  else if (event.data === 5) msg = 'Error reproductor';
+  else if (event.data === 100) msg = 'Video no encontrado';
+  else if (event.data === 101 || event.data === 150) msg = 'No permitido reproducir embebido';
+  toast(msg);
+  stopYt();
+}
+
+function startYtProgress() {
+  if (YT.progressInterval) clearInterval(YT.progressInterval);
+  YT.progressInterval = setInterval(() => {
+    if (!YT.player || !YT.active) return;
+    try {
+      const cur = YT.player.getCurrentTime() || 0;
+      const dur = YT.player.getDuration() || 0;
+      $('progressFill').style.width = (dur ? (cur/dur)*100 : 0) + '%';
+      $('progressThumb').style.left = (dur ? (cur/dur)*100 : 0) + '%';
+      $('timeNow').textContent = fmtTime(cur);
+      $('timeTotal').textContent = fmtTime(dur);
+    } catch(e) {}
+  }, 500);
+}
+function stopYtProgress() {
+  if (YT.progressInterval) { clearInterval(YT.progressInterval); YT.progressInterval = null; }
+}
+
+function extractVideoId(input) {
+  if (!input) return null;
+  input = input.trim();
+  // Direct ID (11 chars)
+  if (/^[a-zA-Z0-9_-]{11}$/.test(input)) return input;
+  // youtu.be/ID
+  let m = input.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+  if (m) return m[1];
+  // youtube.com/watch?v=ID
+  m = input.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+  if (m) return m[1];
+  // youtube.com/embed/ID
+  m = input.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/);
+  if (m) return m[1];
+  // youtube.com/shorts/ID
+  m = input.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
+  if (m) return m[1];
+  return null;
+}
+
+function playYouTube(videoId) {
+  if (!YT.ready || !YT.player) {
+    toast('Cargando YouTube API...');
+    setTimeout(() => playYouTube(videoId), 1000);
+    return;
+  }
+  // Stop local audio if playing
+  if (!audio.paused) audio.pause();
+
+  YT.active = true;
+  YT.currentVideoId = videoId;
+  state.index = -1;  // Disconnect from local queue
+
+  try {
+    YT.player.loadVideoById(videoId);
+    YT.player.playVideo();
+  } catch(e) {
+    toast('Error al cargar video');
+    return;
+  }
+
+  $('ytMini').classList.add('show');
+  $('ytMiniLabel').textContent = 'YOUTUBE';
+  $('trackTitle').textContent = 'Cargando...';
+  $('trackArtist').textContent = 'YOUTUBE';
+
+  // Update disc thumbnail with YouTube preview
+  updateDiscWithYtThumb(videoId);
+
+  // Add to history
+  addYtToHistory(videoId);
+
+  closeAllDrawers();
+}
+
+function updateDiscWithYtThumb(videoId) {
+  const disc = $('disc');
+  const old = disc.querySelector('img');
+  if (old) old.remove();
+  const fb = $('discFallback');
+  const img = document.createElement('img');
+  img.src = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+  img.onerror = () => { img.remove(); fb.style.display = 'flex'; fb.textContent = '▶'; };
+  disc.appendChild(img);
+  fb.style.display = 'none';
+}
+
+function stopYt() {
+  if (YT.player && YT.active) {
+    try { YT.player.stopVideo(); } catch(e) {}
+  }
+  YT.active = false;
+  YT.currentVideoId = null;
+  state.playing = false;
+  updatePlayUI();
+  stopYtProgress();
+  $('ytMini').classList.remove('show');
+  $('progressFill').style.width = '0%';
+  $('progressThumb').style.left = '0%';
+  $('timeNow').textContent = '00:00';
+  $('timeTotal').textContent = '00:00';
+  if (state.index < 0 && state.queue.length === 0) {
+    $('trackTitle').textContent = 'SIN CANCIÓN';
+    $('trackArtist').textContent = 'TOCA + PARA AÑADIR MÚSICA';
+    const disc = $('disc');
+    const old = disc.querySelector('img'); if (old) old.remove();
+    $('discFallback').style.display = 'flex';
+    $('discFallback').textContent = '♪';
+  } else if (state.queue.length > 0) {
+    updateNowPlaying();
+  }
+  releaseWakeLock();
+}
+
+// === HOOK PLAYBACK CONTROLS ===
+// Override play/pause/next/prev to also handle YT
+const originalPlay = play;
+const originalPause = pause;
+const originalNext = next;
+const originalPrev = prev;
+const originalTogglePlay = togglePlay;
+
+play = function() {
+  if (YT.active && YT.player) {
+    try { YT.player.playVideo(); } catch(e) {}
+    return;
+  }
+  originalPlay();
+};
+
+pause = function() {
+  if (YT.active && YT.player) {
+    try { YT.player.pauseVideo(); } catch(e) {}
+    return;
+  }
+  originalPause();
+};
+
+togglePlay = function() {
+  if (YT.active && YT.player) {
+    try {
+      const st = YT.player.getPlayerState();
+      if (st === 1) YT.player.pauseVideo();
+      else YT.player.playVideo();
+    } catch(e) {}
+    return;
+  }
+  originalTogglePlay();
+};
+
+// Re-attach event listeners with new functions
+$('playBtn').onclick = togglePlay;
+$('discWrap').onclick = (e) => { e.stopPropagation(); togglePlay(); };
+
+// Seek with YT
+const originalSeek = seekFromEvent;
+seekFromEvent = function(e) {
+  if (YT.active && YT.player) {
+    const rect = $('progressBar').getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const pct = Math.max(0, Math.min(1, x / rect.width));
+    try {
+      const dur = YT.player.getDuration();
+      if (dur) YT.player.seekTo(pct * dur, true);
+    } catch(e) {}
+    return;
+  }
+  originalSeek(e);
+};
+
+// When local play() is called from anywhere, stop YT first
+const origLoadIndex = loadIndex;
+loadIndex = function(i, autoplay) {
+  if (YT.active) stopYt();
+  origLoadIndex(i, autoplay);
+};
+
+// === YOUTUBE UI HANDLERS ===
+$('ytBtn').addEventListener('click', () => {
+  openDrawer('ytDrawer');
+  renderYtHistory();
+});
+
+$('ytPlayBtn').addEventListener('click', () => {
+  const val = $('ytInput').value;
+  const id = extractVideoId(val);
+  if (!id) { toast('Link o ID inválido'); return; }
+  $('ytInput').value = '';
+  playYouTube(id);
+});
+
+$('ytInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') $('ytPlayBtn').click();
+});
+
+$('ytSearchBtn').addEventListener('click', () => {
+  // Opens YouTube search in new tab so user can copy link
+  window.open('https://m.youtube.com', '_blank');
+  toast('Abre el video y comparte el link');
+});
+
+$('ytMiniStop').addEventListener('click', stopYt);
+
+// === YT HISTORY ===
+function addYtToHistory(videoId) {
+  YT.history = YT.history.filter(h => h.id !== videoId);
+  YT.history.unshift({ id: videoId, title: '', author: '', date: Date.now() });
+  if (YT.history.length > 30) YT.history = YT.history.slice(0, 30);
+  saveYtHistory();
+}
+
+function updateYtHistoryTitle(videoId, title, author) {
+  const item = YT.history.find(h => h.id === videoId);
+  if (item) {
+    item.title = title || '';
+    item.author = author || '';
+    saveYtHistory();
+    renderYtHistory();
+  }
+}
+
+function saveYtHistory() {
+  try { localStorage.setItem('yt_history', JSON.stringify(YT.history)); } catch(_) {}
+}
+
+function renderYtHistory() {
+  const list = $('ytHistList');
+  const empty = $('ytHistEmpty');
+  $('ytHistCount').textContent = YT.history.length;
+  list.querySelectorAll('.yt-history-item').forEach(el => el.remove());
+  if (!YT.history.length) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  YT.history.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'yt-history-item';
+    div.innerHTML = `
+      <div class="yt-history-thumb" style="background-image:url('https://i.ytimg.com/vi/${item.id}/default.jpg')"></div>
+      <div class="yt-history-info">
+        <div class="yt-history-name">${escapeHtml(item.title || 'Video ' + item.id)}</div>
+        <div class="yt-history-id">${escapeHtml(item.author || item.id)}</div>
+      </div>
+      <button class="yt-history-remove" data-id="${item.id}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    `;
+    div.addEventListener('click', (e) => {
+      if (e.target.closest('.yt-history-remove')) return;
+      playYouTube(item.id);
+    });
+    div.querySelector('.yt-history-remove').addEventListener('click', (e) => {
+      e.stopPropagation();
+      YT.history = YT.history.filter(h => h.id !== item.id);
+      saveYtHistory();
+      renderYtHistory();
+    });
+    list.appendChild(div);
+  });
+}
+
+// === HANDLE SHARED YOUTUBE LINKS ===
+// Check URL for ?yt= or ?v= param
+(function checkUrlForYt() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const ytParam = params.get('yt') || params.get('v');
+    if (ytParam) {
+      const id = extractVideoId(ytParam);
+      if (id) setTimeout(() => playYouTube(id), 2000);
+    }
+  } catch(_) {}
+})();
+
+// === PASTE LINK FROM ANYWHERE ===
+// Listen for paste events on the body
+document.addEventListener('paste', (e) => {
+  const text = (e.clipboardData || window.clipboardData).getData('text');
+  if (!text) return;
+  const id = extractVideoId(text);
+  if (id) {
+    e.preventDefault();
+    playYouTube(id);
+    toast('Reproduciendo desde portapapeles');
+  }
+});
 
 // Register service worker for PWA installability
 if ('serviceWorker' in navigator) {
