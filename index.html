@@ -256,7 +256,10 @@
     position: relative;
     border-radius: 20px;
     overflow: hidden;
-    background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--bg-2) 50%, transparent), rgba(5,3,9,0.92));
+    background:
+      radial-gradient(ellipse 50% 60% at 0% 100%, color-mix(in srgb, var(--c4) 18%, transparent), transparent 60%),
+      radial-gradient(ellipse 50% 60% at 100% 0%, color-mix(in srgb, var(--c1) 18%, transparent), transparent 60%),
+      radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--bg-2) 60%, transparent), rgba(5,3,9,0.92));
     border: 1px solid rgba(255,255,255,0.1);
     min-height: 0;
     box-shadow: 0 0 30px color-mix(in srgb, var(--c1) 8%, transparent);
@@ -555,42 +558,68 @@
   .empty-state svg { width: 50px; height: 50px; opacity: 0.4; margin-bottom: 12px; }
   .empty-state p { font-family: 'Courier New', monospace; font-size: 13px; letter-spacing: 1.5px; }
 
-  /* === LED GLOW ON BUTTONS === */
+  /* === ANIMATED NEON GLOW BORDER ON BUTTONS === */
   .ctrl-btn, .icon-btn {
     position: relative;
+    isolation: isolate;
   }
+  /* Rotating neon border layer */
+  .ctrl-btn::before, .icon-btn::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      var(--c1) 60deg,
+      var(--c2) 120deg,
+      var(--c3) 180deg,
+      var(--c4) 240deg,
+      var(--c1) 300deg,
+      transparent 360deg
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.4;
+    animation: rotateNeon 8s linear infinite;
+    z-index: 0;
+    pointer-events: none;
+  }
+  /* Soft outer glow */
   .ctrl-btn::after, .icon-btn::after {
     content: '';
     position: absolute;
-    inset: -2px;
+    inset: -3px;
     border-radius: inherit;
-    background: linear-gradient(135deg, var(--c1), var(--c2));
-    opacity: 0;
+    background: conic-gradient(
+      from 0deg,
+      var(--c1),
+      var(--c2),
+      var(--c3),
+      var(--c4),
+      var(--c1)
+    );
+    opacity: 0.15;
     z-index: -1;
-    filter: blur(8px);
-    transition: opacity 0.3s;
+    filter: blur(10px);
+    animation: rotateNeon 12s linear infinite;
+    pointer-events: none;
   }
-  .ctrl-btn:hover::after, .icon-btn:hover::after,
-  .ctrl-btn.active::after, .icon-btn.active::after {
-    opacity: 0.4;
+  @keyframes rotateNeon {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
-  .ctrl-btn.play-big::after {
-    opacity: 0.5;
-  }
-  /* Subtle persistent glow on all buttons */
-  .ctrl-btn {
-    box-shadow: 0 0 0 1px rgba(255,255,255,0.05), 0 0 12px color-mix(in srgb, var(--c1) 8%, transparent);
-  }
-  .ctrl-btn.active {
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--c1) 50%, transparent), 0 0 18px color-mix(in srgb, var(--c1) 35%, transparent);
-  }
-  .icon-btn.active {
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--c1) 50%, transparent), 0 0 14px color-mix(in srgb, var(--c1) 30%, transparent);
-  }
-  /* Pulsing LED on action buttons */
-  .action-row .icon-btn {
-    box-shadow: 0 0 8px color-mix(in srgb, var(--c1) 10%, transparent);
-  }
+  /* When button active, glow more */
+  .ctrl-btn.active::before, .icon-btn.active::before { opacity: 0.9; }
+  .ctrl-btn.active::after, .icon-btn.active::after { opacity: 0.4; }
+  /* Play button extra glow */
+  .ctrl-btn.play-big::before { opacity: 0.7; animation-duration: 6s; }
+  .ctrl-btn.play-big::after { opacity: 0.45; animation-duration: 10s; }
+  /* Touch feedback */
+  .ctrl-btn:active::after, .icon-btn:active::after { opacity: 0.6; }
 
   /* === GRIDS === */
   .theme-grid, .viz-grid {
@@ -859,8 +888,44 @@
   body.viz-full .track-info { display: none !important; }
   body.viz-full .app { padding: 0; grid-template-columns: 1fr; gap: 0; }
   body.viz-full .right-panel { gap: 0; }
-  body.viz-full .viz-stage { border-radius: 0; border: none; }
+  body.viz-full .viz-stage {
+    border-radius: 0;
+    border: none;
+    background:
+      radial-gradient(ellipse 60% 50% at 20% 100%, color-mix(in srgb, var(--c4) 25%, transparent), transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 0%, color-mix(in srgb, var(--c1) 22%, transparent), transparent 60%),
+      radial-gradient(ellipse 80% 60% at 50% 50%, color-mix(in srgb, var(--c2) 12%, transparent), transparent 70%),
+      linear-gradient(180deg, color-mix(in srgb, var(--bg-2) 70%, transparent) 0%, var(--bg-0) 100%);
+  }
   body.viz-full .viz-border { display: none; }
+  /* Animated background overlay in fullscreen mode */
+  body.viz-full .viz-stage::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 1;
+    mask-image: radial-gradient(ellipse 70% 50% at 50% 50%, black 20%, transparent 90%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 50% at 50% 50%, black 20%, transparent 90%);
+    animation: gridPan 30s linear infinite;
+  }
+  @keyframes gridPan {
+    from { background-position: 0 0; }
+    to { background-position: 60px 60px; }
+  }
+  /* Subtle vignette overlay */
+  body.viz-full .viz-stage::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 100% 80% at 50% 50%, transparent 40%, rgba(0,0,0,0.4) 100%);
+    pointer-events: none;
+    z-index: 1;
+  }
   body.viz-full .viz-exit {
     position: fixed; top: 14px; right: 14px;
     z-index: 90; display: flex;
@@ -947,7 +1012,6 @@
       <button class="icon-btn" id="vizFullBtn" title="Pantalla completa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
       <button class="icon-btn" id="speedBtn" title="Velocidad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
       <button class="icon-btn" id="brightBtn" title="Brillo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button>
-      <button class="icon-btn" id="bgToggleBtn" title="Solo viz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></button>
       <button class="icon-btn" id="lyricsBtn" title="Letras"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></button>
       <button class="icon-btn" id="ytBtn" title="YouTube" style="color: #ff4444; border-color: rgba(255,68,68,0.4);"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.582,6.186c-0.23-0.86-0.908-1.538-1.768-1.768C18.254,4,12,4,12,4S5.746,4,4.186,4.418c-0.86,0.23-1.538,0.908-1.768,1.768C2,7.746,2,12,2,12s0,4.254,0.418,5.814c0.23,0.86,0.908,1.538,1.768,1.768C5.746,20,12,20,12,20s6.254,0,7.814-0.418c0.861-0.23,1.538-0.908,1.768-1.768C22,16.254,22,12,22,12S22,7.746,21.582,6.186z M10,15.464V8.536L16,12L10,15.464z"/></svg></button>
       <button class="icon-btn" id="settingsBtn" title="Más"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
@@ -1643,7 +1707,8 @@ $('vizCycleBtn').addEventListener('click', () => {
   toast(VIZ_MODES[state.vizMode].name);
 });
 
-$('bgToggleBtn').addEventListener('click', () => {
+const _bgToggle = $('bgToggleBtn');
+if (_bgToggle) _bgToggle.addEventListener('click', () => {
   document.body.classList.toggle('viz-full');
 });
 
