@@ -39,6 +39,7 @@
   body.theme-ocean { --c1: #00ddff; --c2: #0066ff; --c3: #00ffaa; --c4: #6644ff; --bg-2: #001a2a; }
   body.theme-galaxy { --c1: #aa88ff; --c2: #ff66bb; --c3: #6699ff; --c4: #ffcc66; --bg-2: #15082c; }
   body.theme-toxic { --c1: #aaff00; --c2: #ff00aa; --c3: #00ffcc; --c4: #ffff00; --bg-2: #0a1f00; }
+  body.theme-rainbow { --c1: #00f0ff; --c2: #ff1e8e; --c3: #ffb700; --c4: #aaff00; --bg-2: #1a0a2e; }
 
   .bg-gradient {
     position: fixed; inset: 0; z-index: 0;
@@ -478,25 +479,118 @@
   .add-btn:active { transform: scale(0.95); }
   .pl-item {
     display: flex; align-items: center; gap: 12px;
-    padding: 12px 14px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 13px; margin-bottom: 8px; cursor: pointer;
-    transition: transform 0.1s, background 0.2s;
+    padding: 10px 12px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px; margin-bottom: 8px; cursor: pointer;
+    transition: transform 0.15s, background 0.2s, box-shadow 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .pl-item::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, var(--c1), var(--c2));
+    opacity: 0;
+    transition: opacity 0.2s;
   }
   .pl-item:active { transform: scale(0.98); background: rgba(255,255,255,0.08); }
-  .pl-item.current { border-color: color-mix(in srgb, var(--c1) 50%, transparent); background: color-mix(in srgb, var(--c1) 10%, transparent); }
-  .pl-num { font-family: 'Courier New', monospace; font-size: 14px; color: rgba(255,255,255,0.5); min-width: 30px; text-align: center; }
+  .pl-item.current {
+    border-color: color-mix(in srgb, var(--c1) 50%, transparent);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--c1) 15%, transparent), color-mix(in srgb, var(--c2) 10%, transparent));
+    box-shadow: 0 0 14px color-mix(in srgb, var(--c1) 30%, transparent);
+  }
+  .pl-item.current::before { opacity: 1; }
+  .pl-thumb {
+    width: 44px; height: 44px; border-radius: 8px;
+    background: conic-gradient(from 0deg, var(--c4), var(--c2), var(--c3), var(--c1), var(--c4));
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(0,0,0,0.85); font-weight: 900; font-size: 18px;
+    flex-shrink: 0;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .pl-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .pl-item.current .pl-thumb {
+    animation: thumbSpin 6s linear infinite;
+    box-shadow: 0 0 12px color-mix(in srgb, var(--c1) 60%, transparent);
+  }
+  @keyframes thumbSpin {
+    from { transform: rotate(0deg); } to { transform: rotate(360deg); }
+  }
+  .pl-num { font-family: 'Courier New', monospace; font-size: 13px; color: rgba(255,255,255,0.4); min-width: 26px; text-align: center; font-weight: bold; }
   .pl-item.current .pl-num { color: var(--c1); }
   .pl-info { flex: 1; min-width: 0; }
-  .pl-name { font-weight: 600; font-size: 15px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .pl-meta { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.5px; }
-  .pl-remove { width: 34px; height: 34px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 9px; color: rgba(255,255,255,0.5); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .pl-remove:active { background: color-mix(in srgb, var(--c2) 20%, transparent); color: var(--c2); }
-  .pl-remove svg { width: 16px; height: 16px; }
+  .pl-name { font-weight: 600; font-size: 14px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.2px; }
+  .pl-meta { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.5px; }
+  .pl-item.current .pl-name { color: var(--c1); }
+  .pl-equalizer {
+    display: none;
+    flex-shrink: 0;
+    gap: 2px;
+    align-items: flex-end;
+    height: 18px;
+    margin-right: 4px;
+  }
+  .pl-item.current.playing .pl-equalizer { display: flex; }
+  .pl-equalizer span {
+    display: block; width: 3px;
+    background: var(--c1);
+    border-radius: 2px;
+    animation: eqBar 0.6s ease-in-out infinite;
+  }
+  .pl-equalizer span:nth-child(1) { height: 60%; animation-delay: 0s; }
+  .pl-equalizer span:nth-child(2) { height: 100%; animation-delay: 0.15s; }
+  .pl-equalizer span:nth-child(3) { height: 75%; animation-delay: 0.3s; }
+  @keyframes eqBar {
+    0%, 100% { transform: scaleY(0.4); }
+    50% { transform: scaleY(1); }
+  }
+  .pl-remove { width: 32px; height: 32px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 9px; color: rgba(255,255,255,0.4); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+  .pl-remove:active { background: color-mix(in srgb, var(--c2) 25%, transparent); color: var(--c2); transform: scale(0.9); }
+  .pl-remove svg { width: 15px; height: 15px; }
   .empty-state { padding: 50px 20px; text-align: center; color: rgba(255,255,255,0.5); }
   .empty-state svg { width: 50px; height: 50px; opacity: 0.4; margin-bottom: 12px; }
   .empty-state p { font-family: 'Courier New', monospace; font-size: 13px; letter-spacing: 1.5px; }
+
+  /* === LED GLOW ON BUTTONS === */
+  .ctrl-btn, .icon-btn {
+    position: relative;
+  }
+  .ctrl-btn::after, .icon-btn::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, var(--c1), var(--c2));
+    opacity: 0;
+    z-index: -1;
+    filter: blur(8px);
+    transition: opacity 0.3s;
+  }
+  .ctrl-btn:hover::after, .icon-btn:hover::after,
+  .ctrl-btn.active::after, .icon-btn.active::after {
+    opacity: 0.4;
+  }
+  .ctrl-btn.play-big::after {
+    opacity: 0.5;
+  }
+  /* Subtle persistent glow on all buttons */
+  .ctrl-btn {
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.05), 0 0 12px color-mix(in srgb, var(--c1) 8%, transparent);
+  }
+  .ctrl-btn.active {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--c1) 50%, transparent), 0 0 18px color-mix(in srgb, var(--c1) 35%, transparent);
+  }
+  .icon-btn.active {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--c1) 50%, transparent), 0 0 14px color-mix(in srgb, var(--c1) 30%, transparent);
+  }
+  /* Pulsing LED on action buttons */
+  .action-row .icon-btn {
+    box-shadow: 0 0 8px color-mix(in srgb, var(--c1) 10%, transparent);
+  }
 
   /* === GRIDS === */
   .theme-grid, .viz-grid {
@@ -528,6 +622,8 @@
   .theme-oce { background: radial-gradient(circle at 30% 30%, #0066ff, transparent 60%), radial-gradient(circle at 70% 70%, #00ddff, transparent 60%), #001a2a; }
   .theme-gal { background: radial-gradient(circle at 30% 30%, #aa88ff, transparent 60%), radial-gradient(circle at 70% 70%, #ff66bb, transparent 60%), #15082c; }
   .theme-tox { background: radial-gradient(circle at 30% 30%, #aaff00, transparent 60%), radial-gradient(circle at 70% 70%, #ff00aa, transparent 60%), #0a1f00; }
+  .theme-rai { background: conic-gradient(from 0deg, #00f0ff, #ff1e8e, #ffb700, #aaff00, #b400ff, #00f0ff); animation: rainSpin 4s linear infinite; }
+  @keyframes rainSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
   .viz-card {
     aspect-ratio: 1.4; border-radius: 12px;
@@ -776,6 +872,7 @@
 
 <div class="bg-gradient"></div>
 <div class="bg-grid"></div>
+<canvas id="bgParticles" style="position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0.6;"></canvas>
 <div class="beat-flash" id="beatFlash"></div>
 
 <div class="intro" id="intro">
@@ -877,13 +974,25 @@
 <div class="drawer" id="plDrawer">
   <div class="drawer-head">
     <div class="drawer-title">COLA · <span id="plCount">0</span></div>
-    <div style="display: flex; gap: 8px;">
-      <button class="add-btn" id="addBtn">
+    <div style="display: flex; gap: 6px;">
+      <button class="add-btn" id="addBtn" title="Añadir canciones">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         AÑADIR
       </button>
+      <button class="add-btn" id="addFolderBtn" title="Escanear carpeta" style="background: linear-gradient(135deg, var(--c3), var(--c4)); padding: 10px 14px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      </button>
       <button class="drawer-close" data-close><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
+  </div>
+  <div style="display: flex; gap: 6px; margin-bottom: 12px; align-items: center;">
+    <div style="position: relative; flex: 1;">
+      <input id="plSearch" type="text" placeholder="Buscar..." style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; color: white; padding: 9px 12px 9px 34px; font-size: 13px; font-family: inherit; outline: none;">
+      <svg style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: rgba(255,255,255,0.5);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <button class="icon-btn" id="plClearBtn" title="Borrar todo" style="flex-shrink: 0; width: 38px; height: 38px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+    </button>
   </div>
   <div class="drawer-content">
     <div id="playlist">
@@ -909,6 +1018,7 @@
       <div class="theme-card" data-theme="ocean"><div class="preview theme-oce"></div><div class="label">OCEAN</div></div>
       <div class="theme-card" data-theme="galaxy"><div class="preview theme-gal"></div><div class="label">GALAXY</div></div>
       <div class="theme-card" data-theme="toxic"><div class="preview theme-tox"></div><div class="label">TOXIC</div></div>
+      <div class="theme-card" data-theme="rainbow"><div class="preview theme-rai"></div><div class="label">RAINBOW</div></div>
     </div>
   </div>
 </div>
@@ -1024,6 +1134,7 @@
 </div>
 
 <input type="file" id="fileInput" accept="audio/*" multiple>
+<input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;">
 <div class="toast" id="toast"></div>
 <audio id="audio" preload="metadata"></audio>
 
@@ -1392,8 +1503,21 @@ function renderPlaylist() {
   empty.style.display = 'none';
   state.queue.forEach((item, i) => {
     const div = document.createElement('div');
-    div.className = 'pl-item' + (i === state.index ? ' current' : '');
-    div.innerHTML = `<div class="pl-num">${String(i+1).padStart(2,'0')}</div><div class="pl-info"><div class="pl-name">${escapeHtml(item.title || item.name)}</div><div class="pl-meta">${escapeHtml(item.artist || 'Desconocido')}</div></div><button class="pl-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
+    const isCurrent = i === state.index;
+    div.className = 'pl-item' + (isCurrent ? ' current' : '') + (isCurrent && state.playing ? ' playing' : '');
+    const letter = (item.title || item.name || '♪').charAt(0).toUpperCase();
+    const thumbInner = item.picUrl
+      ? `<img src="${item.picUrl}" alt="">`
+      : letter;
+    div.innerHTML = `
+      <div class="pl-num">${String(i+1).padStart(2,'0')}</div>
+      <div class="pl-thumb">${thumbInner}</div>
+      <div class="pl-info">
+        <div class="pl-name">${escapeHtml(item.title || item.name)}</div>
+        <div class="pl-meta">${escapeHtml(item.artist || 'Desconocido')}${item.album ? ' · ' + escapeHtml(item.album) : ''}</div>
+      </div>
+      <div class="pl-equalizer"><span></span><span></span><span></span></div>
+      <button class="pl-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
     div.addEventListener('click', (e) => {
       if (e.target.closest('.pl-remove')) return;
       loadIndex(i, true); closeAllDrawers();
@@ -2284,6 +2408,439 @@ document.addEventListener('gesturestart', e => e.preventDefault());
   }
 
 })();
+
+// ========================================
+// PARTICULAS DE FONDO FUTURISTA
+// ========================================
+(function() {
+  try {
+    const bgC = document.getElementById('bgParticles');
+    if (!bgC) return;
+    const bgX = bgC.getContext('2d', { alpha: true });
+    let W = 0, H = 0;
+    function resize() {
+      W = window.innerWidth; H = window.innerHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      bgC.width = W * dpr; bgC.height = H * dpr;
+      bgC.style.width = W + 'px'; bgC.style.height = H + 'px';
+      bgX.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const particles = [];
+    for (let i = 0; i < 35; i++) {
+      particles.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        size: 1 + Math.random() * 2,
+        life: Math.random()
+      });
+    }
+
+    function getC(i) {
+      try { return getComputedStyle(document.body).getPropertyValue('--c' + (i+1)).trim() || '#fff'; }
+      catch(e) { return '#fff'; }
+    }
+
+    let lastT = 0;
+    function loop(now) {
+      requestAnimationFrame(loop);
+      const dt = Math.min(0.05, (now - lastT) / 1000);
+      lastT = now;
+      bgX.clearRect(0, 0, W, H);
+      const c1 = getC(0), c2 = getC(1);
+
+      // Update + draw particles
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+        if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+        p.life += dt * 0.3;
+        const alpha = 0.3 + Math.sin(p.life * 2) * 0.2;
+        bgX.fillStyle = (Math.floor(p.life * 2) % 2 === 0) ? c1 : c2;
+        bgX.globalAlpha = alpha;
+        bgX.beginPath();
+        bgX.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        bgX.fill();
+      }
+
+      // Connect close particles with lines
+      bgX.globalAlpha = 0.15;
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          if (dist < 120) {
+            bgX.strokeStyle = c1;
+            bgX.lineWidth = (1 - dist/120) * 0.8;
+            bgX.beginPath();
+            bgX.moveTo(particles[i].x, particles[i].y);
+            bgX.lineTo(particles[j].x, particles[j].y);
+            bgX.stroke();
+          }
+        }
+      }
+      bgX.globalAlpha = 1;
+    }
+    requestAnimationFrame(loop);
+  } catch(e) { console.error('BG particles err:', e); }
+})();
+
+// ========================================
+// TEMA RAINBOW (cambio automático)
+// ========================================
+(function() {
+  let rainbowInterval = null;
+  const palettes = [
+    ['#00f0ff', '#ff1e8e', '#ffb700', '#b400ff'],
+    ['#00ffaa', '#ff0080', '#ffcc00', '#0099ff'],
+    ['#88ffaa', '#ff88dd', '#88ccff', '#c088ff'],
+    ['#ff6600', '#ffcc00', '#ff0033', '#ff9933'],
+    ['#00ddff', '#0066ff', '#00ffaa', '#6644ff'],
+    ['#aa88ff', '#ff66bb', '#6699ff', '#ffcc66'],
+    ['#aaff00', '#ff00aa', '#00ffcc', '#ffff00'],
+  ];
+  let palIdx = 0;
+
+  function applyPalette(p) {
+    document.body.style.setProperty('--c1', p[0]);
+    document.body.style.setProperty('--c2', p[1]);
+    document.body.style.setProperty('--c3', p[2]);
+    document.body.style.setProperty('--c4', p[3]);
+  }
+
+  function startRainbow() {
+    stopRainbow();
+    palIdx = 0;
+    applyPalette(palettes[palIdx]);
+    rainbowInterval = setInterval(() => {
+      palIdx = (palIdx + 1) % palettes.length;
+      applyPalette(palettes[palIdx]);
+    }, 4500);
+  }
+  function stopRainbow() {
+    if (rainbowInterval) { clearInterval(rainbowInterval); rainbowInterval = null; }
+    // Remove inline overrides so theme CSS takes over
+    document.body.style.removeProperty('--c1');
+    document.body.style.removeProperty('--c2');
+    document.body.style.removeProperty('--c3');
+    document.body.style.removeProperty('--c4');
+  }
+
+  // Hook into theme buttons
+  document.querySelectorAll('.theme-card').forEach(card => {
+    card.addEventListener('click', () => {
+      if (card.dataset.theme === 'rainbow') {
+        setTimeout(startRainbow, 50);
+      } else {
+        stopRainbow();
+      }
+    }, true);  // capture phase, runs before existing handler
+  });
+
+  // Apply on load if rainbow saved
+  setTimeout(() => {
+    try {
+      const saved = localStorage.getItem('nwcar_theme');
+      if (saved === 'rainbow') startRainbow();
+    } catch(e) {}
+  }, 500);
+})();
+
+// ========================================
+// CARPETA / SELECCION MASIVA
+// ========================================
+(function() {
+  try {
+    const folderBtn = document.getElementById('addFolderBtn');
+    const folderInput = document.getElementById('folderInput');
+    if (!folderBtn || !folderInput) return;
+
+    folderBtn.addEventListener('click', () => {
+      folderInput.click();
+    });
+
+    folderInput.addEventListener('change', async (e) => {
+      const allFiles = Array.from(e.target.files || []);
+      // Filter audio only
+      const audioFiles = allFiles.filter(f =>
+        f.type.startsWith('audio/') ||
+        /\.(mp3|m4a|aac|ogg|wav|flac|opus|webm)$/i.test(f.name)
+      );
+      if (!audioFiles.length) {
+        if (typeof toast === 'function') toast('No se encontraron audios');
+        folderInput.value = '';
+        return;
+      }
+      if (typeof toast === 'function') toast(`Encontradas ${audioFiles.length} canciones`);
+      const wasEmpty = state.queue.length === 0;
+      for (const file of audioFiles) {
+        const url = URL.createObjectURL(file);
+        const baseName = file.name.replace(/\.[^.]+$/, '');
+        const item = { url, name: baseName, file, title: baseName, artist: 'Desconocido', album: '', picUrl: null };
+        try { await parseTagsForItem(item); } catch(_) {}
+        state.queue.push(item);
+        // Save to DB if available
+        if (window._lib && window._lib.add) {
+          try { await window._lib.add(item); } catch(_) {}
+        }
+      }
+      renderPlaylist();
+      folderInput.value = '';
+      if (wasEmpty && state.queue.length) loadIndex(0, true);
+    });
+  } catch(e) { console.error(e); }
+})();
+
+// ========================================
+// BÚSQUEDA Y CLEAR
+// ========================================
+(function() {
+  try {
+    const plSearch = document.getElementById('plSearch');
+    const plClearBtn = document.getElementById('plClearBtn');
+
+    if (plSearch) {
+      plSearch.addEventListener('input', () => {
+        const filter = plSearch.value.toLowerCase().trim();
+        const items = document.querySelectorAll('#playlist .pl-item');
+        items.forEach((el, idx) => {
+          if (!filter) { el.style.display = ''; return; }
+          const item = state.queue[idx];
+          if (!item) { el.style.display = ''; return; }
+          const t = (item.title || item.name || '').toLowerCase();
+          const a = (item.artist || '').toLowerCase();
+          const al = (item.album || '').toLowerCase();
+          el.style.display = (t.includes(filter) || a.includes(filter) || al.includes(filter)) ? '' : 'none';
+        });
+      });
+    }
+
+    if (plClearBtn) {
+      plClearBtn.addEventListener('click', async () => {
+        if (!confirm('¿Borrar TODAS las canciones?')) return;
+        try { audio.pause(); } catch(e) {}
+        state.playing = false;
+        if (typeof updatePlayUI === 'function') updatePlayUI();
+        state.queue = [];
+        state.index = -1;
+        audio.src = '';
+        if (typeof updateNowPlaying === 'function') updateNowPlaying();
+        renderPlaylist();
+        if (window._lib && window._lib.clear) { try { await window._lib.clear(); } catch(_) {} }
+        if (typeof toast === 'function') toast('BIBLIOTECA BORRADA');
+      });
+    }
+  } catch(e) { console.error(e); }
+})();
+
+// ========================================
+// INDEXEDDB (guardar canciones permanentemente)
+// ========================================
+(function() {
+  let _db = null;
+  const DB_NAME = 'nw_library';
+  const STORE = 'tracks';
+
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      if (_db) { resolve(_db); return; }
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => { _db = req.result; resolve(_db); };
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE)) {
+          db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+        }
+      };
+    });
+  }
+
+  async function add(item) {
+    try {
+      const db = await openDB();
+      if (!item.file) return null;
+      const buf = await item.file.arrayBuffer();
+      let picBuf = null, picType = null;
+      if (item.picUrl) {
+        try {
+          const r = await fetch(item.picUrl);
+          const blob = await r.blob();
+          picBuf = await blob.arrayBuffer();
+          picType = blob.type;
+        } catch(_) {}
+      }
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        const store = tx.objectStore(STORE);
+        const rec = {
+          name: item.name, title: item.title, artist: item.artist, album: item.album,
+          fileType: item.file.type, data: buf, picData: picBuf, picType,
+          addedAt: Date.now()
+        };
+        const req = store.add(rec);
+        req.onsuccess = () => { item.dbId = req.result; resolve(req.result); };
+        req.onerror = () => reject(req.error);
+      });
+    } catch(e) { console.warn('db add fail', e); return null; }
+  }
+
+  async function getAll() {
+    try {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readonly');
+        const store = tx.objectStore(STORE);
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      });
+    } catch(e) { return []; }
+  }
+
+  async function remove(id) {
+    try {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).delete(id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch(e) {}
+  }
+
+  async function clear() {
+    try {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).clear();
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch(e) {}
+  }
+
+  window._lib = { add, getAll, remove, clear };
+
+  // Hook into existing file input to also save
+  setTimeout(() => {
+    const fileInput = document.getElementById('fileInput');
+    if (!fileInput) return;
+    fileInput.addEventListener('change', async () => {
+      // Wait until the existing handler has populated state.queue
+      setTimeout(async () => {
+        for (const item of state.queue) {
+          if (!item.dbId && item.file) {
+            await add(item);
+          }
+        }
+      }, 1500);
+    });
+  }, 500);
+
+  // Hook removeFromQueue
+  const origRemove = window.removeFromQueue;
+  if (typeof origRemove === 'function') {
+    window.removeFromQueue = function(i) {
+      const item = state.queue[i];
+      if (item && item.dbId) { remove(item.dbId); }
+      return origRemove(i);
+    };
+  }
+
+  // Load library on startup
+  setTimeout(async () => {
+    try {
+      const recs = await getAll();
+      recs.sort((a, b) => (a.addedAt || 0) - (b.addedAt || 0));
+      for (const rec of recs) {
+        const blob = new Blob([rec.data], { type: rec.fileType || 'audio/mpeg' });
+        const url = URL.createObjectURL(blob);
+        const item = {
+          url, name: rec.name, file: null,
+          title: rec.title || rec.name, artist: rec.artist || 'Desconocido',
+          album: rec.album || '', picUrl: null, dbId: rec.id
+        };
+        if (rec.picData) {
+          const picBlob = new Blob([rec.picData], { type: rec.picType || 'image/jpeg' });
+          item.picUrl = URL.createObjectURL(picBlob);
+        }
+        state.queue.push(item);
+      }
+      if (state.queue.length > 0) {
+        renderPlaylist();
+        state.index = 0;
+        audio.src = state.queue[0].url;
+        if (typeof updateNowPlaying === 'function') updateNowPlaying();
+        if (typeof toast === 'function') toast(`Biblioteca: ${state.queue.length} canciones`);
+      }
+    } catch(e) { console.error('lib load fail', e); }
+  }, 1200);
+})();
+
+// ========================================
+// YOUTUBE PLAYLIST SUPPORT
+// ========================================
+(function() {
+  try {
+    // Extract playlist ID from URL
+    function extractPlaylistId(input) {
+      if (!input) return null;
+      const m = input.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+      return m ? m[1] : null;
+    }
+    window._extractYtPlaylist = extractPlaylistId;
+
+    // Wait for ytPlayBtn
+    setTimeout(() => {
+      const ytPlayBtn = document.getElementById('ytPlayBtn');
+      const ytInput = document.getElementById('ytInput');
+      if (!ytPlayBtn || !ytInput) return;
+
+      // Intercept play with capture to check for playlist
+      ytPlayBtn.addEventListener('click', (e) => {
+        const val = ytInput.value;
+        const plId = extractPlaylistId(val);
+        if (plId && window._yt && window._yt.player && window._yt.ready) {
+          e.stopImmediatePropagation();
+          try {
+            window._yt.active = true;
+            window._yt.player.loadPlaylist({ list: plId, listType: 'playlist', index: 0, suggestedQuality: 'default' });
+            window._yt.player.playVideo();
+            document.getElementById('ytMini').classList.add('show');
+            document.getElementById('trackTitle').textContent = 'Cargando playlist...';
+            document.getElementById('trackArtist').textContent = 'YOUTUBE PLAYLIST';
+            ytInput.value = '';
+            if (typeof closeAllDrawers === 'function') closeAllDrawers();
+            if (typeof toast === 'function') toast('Reproduciendo playlist');
+          } catch(err) {
+            if (typeof toast === 'function') toast('Error playlist');
+          }
+        }
+      }, true);  // capture phase
+    }, 800);
+  } catch(e) { console.error(e); }
+})();
+
+// ========================================
+// EQUALIZER ANIMATION IN PLAYLIST
+// ========================================
+setInterval(() => {
+  try {
+    const current = document.querySelector('#playlist .pl-item.current');
+    if (current) {
+      current.classList.toggle('playing', state.playing);
+    }
+  } catch(e) {}
+}, 500);
 
 // Register service worker with auto-update (like BridgeControl)
 if ('serviceWorker' in navigator) {
