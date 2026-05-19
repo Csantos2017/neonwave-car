@@ -257,13 +257,51 @@
     border-radius: 20px;
     overflow: hidden;
     background:
-      radial-gradient(ellipse 50% 60% at 0% 100%, color-mix(in srgb, var(--c4) 18%, transparent), transparent 60%),
-      radial-gradient(ellipse 50% 60% at 100% 0%, color-mix(in srgb, var(--c1) 18%, transparent), transparent 60%),
-      radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--bg-2) 60%, transparent), rgba(5,3,9,0.92));
+      radial-gradient(ellipse 55% 70% at 10% 100%, color-mix(in srgb, var(--c4) 28%, transparent), transparent 60%),
+      radial-gradient(ellipse 55% 70% at 100% 0%, color-mix(in srgb, var(--c1) 28%, transparent), transparent 60%),
+      radial-gradient(ellipse 80% 60% at 50% 50%, color-mix(in srgb, var(--c2) 14%, transparent), transparent 70%),
+      linear-gradient(180deg, color-mix(in srgb, var(--bg-2) 75%, transparent) 0%, var(--bg-0) 100%);
     border: 1px solid rgba(255,255,255,0.1);
     min-height: 0;
-    box-shadow: 0 0 30px color-mix(in srgb, var(--c1) 8%, transparent);
+    box-shadow: 0 0 30px color-mix(in srgb, var(--c1) 10%, transparent);
   }
+  /* Animated subtle grid + glow inside viz stage so it's never just black */
+  .viz-stage::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 50px 50px;
+    pointer-events: none;
+    z-index: 0;
+    mask-image: radial-gradient(ellipse 70% 50% at 50% 50%, black 25%, transparent 90%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 50% at 50% 50%, black 25%, transparent 90%);
+    animation: gridDrift 25s linear infinite;
+  }
+  @keyframes gridDrift {
+    from { background-position: 0 0; }
+    to { background-position: 50px 50px; }
+  }
+  /* Slow color pulse glow */
+  .viz-stage::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--c1) 8%, transparent), transparent 50%),
+      radial-gradient(circle at 70% 70%, color-mix(in srgb, var(--c2) 8%, transparent), transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+    animation: bgPulse 8s ease-in-out infinite alternate;
+  }
+  @keyframes bgPulse {
+    from { opacity: 0.5; }
+    to { opacity: 1; }
+  }
+  /* Canvas above the decorative layers */
+  .viz-canvas { z-index: 1 !important; }
   .viz-canvas {
     position: absolute; inset: 0; width: 100%; height: 100%;
     display: block;
@@ -558,68 +596,75 @@
   .empty-state svg { width: 50px; height: 50px; opacity: 0.4; margin-bottom: 12px; }
   .empty-state p { font-family: 'Courier New', monospace; font-size: 13px; letter-spacing: 1.5px; }
 
-  /* === ANIMATED NEON GLOW BORDER ON BUTTONS === */
+  /* === TRAVELING NEON LIGHT ON BUTTONS === */
   .ctrl-btn, .icon-btn {
     position: relative;
     isolation: isolate;
   }
-  /* Rotating neon border layer */
+  /* Light traveling around the border */
   .ctrl-btn::before, .icon-btn::before {
     content: '';
     position: absolute;
-    inset: -1px;
+    inset: -2px;
     border-radius: inherit;
-    padding: 1px;
+    padding: 2px;
     background: conic-gradient(
-      from 0deg,
+      from var(--angle, 0deg),
       transparent 0deg,
-      var(--c1) 60deg,
-      var(--c2) 120deg,
-      var(--c3) 180deg,
-      var(--c4) 240deg,
-      var(--c1) 300deg,
-      transparent 360deg
+      transparent 270deg,
+      var(--c1) 320deg,
+      var(--c2) 350deg,
+      var(--c1) 360deg
     );
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
-    opacity: 0.4;
-    animation: rotateNeon 8s linear infinite;
+    opacity: 0.7;
+    animation: travelLight 5s linear infinite;
     z-index: 0;
     pointer-events: none;
+    filter: blur(0.5px);
   }
-  /* Soft outer glow */
+  /* Soft glow trail behind the traveling light */
   .ctrl-btn::after, .icon-btn::after {
     content: '';
     position: absolute;
-    inset: -3px;
+    inset: -4px;
     border-radius: inherit;
     background: conic-gradient(
-      from 0deg,
-      var(--c1),
-      var(--c2),
-      var(--c3),
-      var(--c4),
-      var(--c1)
+      from var(--angle, 0deg),
+      transparent 0deg,
+      transparent 280deg,
+      color-mix(in srgb, var(--c1) 60%, transparent) 340deg,
+      color-mix(in srgb, var(--c2) 70%, transparent) 360deg
     );
-    opacity: 0.15;
+    opacity: 0.5;
     z-index: -1;
-    filter: blur(10px);
-    animation: rotateNeon 12s linear infinite;
+    filter: blur(8px);
+    animation: travelLight 5s linear infinite;
     pointer-events: none;
   }
-  @keyframes rotateNeon {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+  @property --angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
   }
-  /* When button active, glow more */
-  .ctrl-btn.active::before, .icon-btn.active::before { opacity: 0.9; }
-  .ctrl-btn.active::after, .icon-btn.active::after { opacity: 0.4; }
-  /* Play button extra glow */
-  .ctrl-btn.play-big::before { opacity: 0.7; animation-duration: 6s; }
-  .ctrl-btn.play-big::after { opacity: 0.45; animation-duration: 10s; }
+  @keyframes travelLight {
+    from { --angle: 0deg; }
+    to { --angle: 360deg; }
+  }
+  /* Fallback for browsers without @property */
+  @supports not (background: conic-gradient(from 0deg, red)) {
+    .ctrl-btn::before, .icon-btn::before { opacity: 0; }
+  }
+  /* Active buttons - more visible light */
+  .ctrl-btn.active::before, .icon-btn.active::before { opacity: 1; }
+  .ctrl-btn.active::after, .icon-btn.active::after { opacity: 0.8; }
+  /* Play button - faster, brighter */
+  .ctrl-btn.play-big::before { opacity: 1; animation-duration: 3.5s; }
+  .ctrl-btn.play-big::after { opacity: 0.9; animation-duration: 3.5s; }
   /* Touch feedback */
-  .ctrl-btn:active::after, .icon-btn:active::after { opacity: 0.6; }
+  .ctrl-btn:active::after, .icon-btn:active::after { opacity: 1; filter: blur(12px); }
 
   /* === GRIDS === */
   .theme-grid, .viz-grid {
@@ -1766,10 +1811,15 @@ function startVizLoop() {
     detectBeat(bass, now);
 
     const mode = VIZ_MODES[state.vizMode].id;
-    if (mode === 'matrix') ctx.fillStyle = 'rgba(5,3,9,0.18)';
-    else if (mode === 'plasma' || mode === 'tunnel') ctx.fillStyle = 'rgba(5,3,9,0.22)';
-    else ctx.fillStyle = 'rgba(5,3,9,0.32)';
+    // Use composite to fade trails instead of opaque black overlay,
+    // so the colorful viz-stage background shows through
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    if (mode === 'matrix') ctx.fillStyle = 'rgba(0,0,0,0.10)';
+    else if (mode === 'plasma' || mode === 'tunnel') ctx.fillStyle = 'rgba(0,0,0,0.14)';
+    else ctx.fillStyle = 'rgba(0,0,0,0.22)';
     ctx.fillRect(0, 0, cssW, cssH);
+    ctx.restore();
 
     if (mode === 'bars') drawBarsFull(dt);
     else if (mode === 'radial') drawRadial(dt);
