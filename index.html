@@ -2607,6 +2607,17 @@ document.addEventListener('gesturestart', e => e.preventDefault());
         state.playing = false;
         if (typeof updatePlayUI === 'function') updatePlayUI();
         stopYtProgress();
+        // Auto-play next video from history
+        setTimeout(() => {
+          if (!ytState.active) return;  // user manually stopped
+          const curId = ytState.currentVideoId;
+          const idx = ytState.history.findIndex(h => h.id === curId);
+          if (idx >= 0 && idx < ytState.history.length - 1) {
+            playYt(ytState.history[idx + 1].id);
+          } else if (ytState.history.length > 1) {
+            playYt(ytState.history[0].id);
+          }
+        }, 800);
       }
     } catch(e) { console.error(e); }
   }
@@ -2856,11 +2867,48 @@ document.addEventListener('gesturestart', e => e.preventDefault());
       }, true);
     }
 
-    // Next/prev: stop YT and let normal handler run
+    // Next/prev: if YT active, navigate YT history. Otherwise let normal handler run for MP3
     const nextBtn = $('nextBtn');
     const prevBtn = $('prevBtn');
-    if (nextBtn) nextBtn.addEventListener('click', () => { if (ytState.active) ytStop(); }, true);
-    if (prevBtn) prevBtn.addEventListener('click', () => { if (ytState.active) ytStop(); }, true);
+    if (nextBtn) {
+      nextBtn.addEventListener('click', (e) => {
+        if (ytState.active) {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+          // Find current video in history
+          const curId = ytState.currentVideoId;
+          const idx = ytState.history.findIndex(h => h.id === curId);
+          // History is sorted newest first; "next" goes to OLDER (idx + 1)
+          if (idx >= 0 && idx < ytState.history.length - 1) {
+            playYt(ytState.history[idx + 1].id);
+          } else if (ytState.history.length > 1) {
+            // Wrap to first (newest)
+            playYt(ytState.history[0].id);
+          } else {
+            if (typeof toast === 'function') toast('Sin más videos en historial');
+          }
+        }
+      }, true);
+    }
+    if (prevBtn) {
+      prevBtn.addEventListener('click', (e) => {
+        if (ytState.active) {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+          const curId = ytState.currentVideoId;
+          const idx = ytState.history.findIndex(h => h.id === curId);
+          // "Previous" goes to NEWER (idx - 1)
+          if (idx > 0) {
+            playYt(ytState.history[idx - 1].id);
+          } else if (ytState.history.length > 1) {
+            // Wrap to last (oldest)
+            playYt(ytState.history[ytState.history.length - 1].id);
+          } else {
+            if (typeof toast === 'function') toast('Sin más videos en historial');
+          }
+        }
+      }, true);
+    }
 
     // Paste anywhere
     document.addEventListener('paste', (e) => {
@@ -3316,6 +3364,170 @@ setInterval(() => {
     }
   } catch(e) {}
 }, 500);
+
+// ========================================
+// DISC GESTURE CONTROL (scratch / seek)
+// ========================================
+(function() {
+  try {
+    const discWrap = document.getElementById('discWrap');
+    const disc = document.getElementById('disc');
+    if (!discWrap || !disc) return;
+
+    let pointerDown = false;
+    let startX = 0, startY = 0;
+    let startTime = 0;
+    let lastAngle = 0;
+    let cumulativeAngle = 0;
+    let centerX = 0, centerY = 0;
+    let wasPlaying = false;
+    let isScratching = false;
+    let scratchDelta = 0;
+    let originalRate = 1;
+
+    function getAngle(x, y) {
+      return Math.atan2(y - centerY, x - centerX);
+    }
+
+    function onDown(e) {
+      const point = e.touches ? e.touches[0] : e;
+      const rect = discWrap.getBoundingClientRect();
+      centerX = rect.left + rect.width / 2;
+      centerY = rect.top + rect.height / 2;
+      startX = point.clientX;
+      startY = point.clientY;
+      startTime = Date.now();
+      lastAngle = getAngle(point.clientX, point.clientY);
+      cumulativeAngle = 0;
+      pointerDown = true;
+      isScratching = false;
+      scratchDelta = 0;
+
+      // Save state
+      wasPlaying = !audio.paused;
+      originalRate = audio.playbackRate || 1;
+
+      // Visually pause disc animation
+      disc.style.animationPlayState = 'paused';
+    }
+
+    function onMove(e) {
+      if (!pointerDown) return;
+      const point = e.touches ? e.touches[0] : e;
+      const dx = point.clientX - startX;
+      const dy = point.clientY - startY;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+
+      // If moved more than ~12px, it's a gesture (not a click)
+      if (!isScratching && dist > 12) {
+        isScratching = true;
+        // Pause audio to "scrub" - we'll manually move currentTime
+        if (audio.duration && !isNaN(audio.duration)) {
+          try { audio.pause(); } catch(_) {}
+        }
+        // Visual feedback
+        discWrap.style.transition = 'none';
+        disc.style.transition = 'none';
+        if (typeof toast === 'function') toast('🎚️ SCRATCH');
+      }
+
+      if (isScratching) {
+        // Calculate angle delta
+        const currentAngle = getAngle(point.clientX, point.clientY);
+        let deltaAngle = currentAngle - lastAngle;
+        // Handle wrap-around (-π to π)
+        if (deltaAngle > Math.PI) deltaAngle -= Math.PI * 2;
+        if (deltaAngle < -Math.PI) deltaAngle += Math.PI * 2;
+        cumulativeAngle += deltaAngle;
+        lastAngle = currentAngle;
+
+        // Rotate disc visually following finger
+        const rotDeg = (cumulativeAngle * 180 / Math.PI);
+        disc.style.transform = `rotate(${rotDeg}deg)`;
+
+        // Move audio position based on rotation
+        // Full circle = 5 seconds of audio (adjust feel here)
+        const audioDelta = cumulativeAngle / (Math.PI * 2) * 5;
+        scratchDelta = audioDelta;
+
+        if (audio.duration && !isNaN(audio.duration)) {
+          const newTime = Math.max(0, Math.min(audio.duration, audio.currentTime + (audioDelta - (audio._lastScratch || 0))));
+          audio.currentTime = newTime;
+          audio._lastScratch = audioDelta;
+        }
+
+        // Also handle YouTube
+        if (window._yt && window._yt.active && window._yt.player) {
+          try {
+            const dur = window._yt.player.getDuration();
+            if (dur) {
+              const cur = window._yt.player.getCurrentTime();
+              const target = Math.max(0, Math.min(dur, cur + deltaAngle / (Math.PI * 2) * 5));
+              window._yt.player.seekTo(target, true);
+            }
+          } catch(_) {}
+        }
+
+        e.preventDefault();
+      }
+    }
+
+    function onUp(e) {
+      if (!pointerDown) return;
+      pointerDown = false;
+      const duration = Date.now() - startTime;
+
+      // Restore visual
+      discWrap.style.transition = '';
+      disc.style.transition = '';
+      audio._lastScratch = 0;
+
+      if (isScratching) {
+        // Reset disc rotation (let CSS animation take over)
+        disc.style.transform = '';
+        // Resume playback if was playing
+        if (wasPlaying) {
+          try { audio.play(); } catch(_) {}
+        }
+        // Resume disc spin animation
+        disc.style.animationPlayState = wasPlaying ? 'running' : 'paused';
+        if (typeof toast === 'function') {
+          const skipped = Math.abs(scratchDelta);
+          if (skipped > 0.5) {
+            toast(`⏭ ${skipped > 0 ? '+' : ''}${scratchDelta.toFixed(1)}s`);
+          }
+        }
+      } else if (duration < 400) {
+        // Short tap = play/pause toggle (let existing handler do it)
+        // Resume disc spin
+        disc.style.animationPlayState = '';
+      } else {
+        // Long press with no movement, just restore
+        disc.style.animationPlayState = '';
+      }
+
+      isScratching = false;
+    }
+
+    // Use capture phase so we run BEFORE the existing click handler
+    discWrap.addEventListener('pointerdown', onDown, { capture: true });
+    window.addEventListener('pointermove', onMove, { passive: false });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+
+    // Block the existing click handler if we just scratched
+    discWrap.addEventListener('click', (e) => {
+      if (isScratching || (Date.now() - startTime < 50 && scratchDelta !== 0)) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      }
+    }, true);
+
+    // Touch action prevention
+    discWrap.style.touchAction = 'none';
+
+  } catch(e) { console.error('Disc gesture err:', e); }
+})();
 
 // Register service worker with auto-update (like BridgeControl)
 if ('serviceWorker' in navigator) {
