@@ -1265,6 +1265,7 @@ const audio = $('audio');
 
 const VIZ_MODES = [
   { id: 'bars', name: 'BARS' },
+  { id: 'barsPico', name: 'PICO' },
   { id: 'radial', name: 'RADIAL' },
   { id: 'waves', name: 'WAVES' },
   { id: 'particles', name: 'PARTICLES' },
@@ -1276,6 +1277,8 @@ const VIZ_MODES = [
   { id: 'starburst', name: 'STARBURST' },
   { id: 'matrix', name: 'MATRIX' },
   { id: 'plasma', name: 'PLASMA' },
+  { id: 'vjDance', name: 'VJ DANCE' },
+  { id: 'silueta', name: 'SILUETA' },
 ];
 
 const state = {
@@ -1359,6 +1362,9 @@ function vizIcon(id) {
     starburst: '<circle cx="12" cy="12" r="2"/><line x1="12" y1="2" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="22"/><line x1="2" y1="12" x2="8" y2="12"/><line x1="16" y1="12" x2="22" y2="12"/>',
     matrix: '<line x1="6" y1="2" x2="6" y2="22"/><line x1="12" y1="2" x2="12" y2="22"/><line x1="18" y1="2" x2="18" y2="22"/>',
     plasma: '<path d="M3 12c0-3 3-6 6-6s6 3 6 6 3 6 6 6"/><path d="M3 18c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/>',
+    barsPico: '<line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="18" y1="20" x2="18" y2="15"/><line x1="4" y1="8" x2="8" y2="8" stroke-width="3"/><line x1="10" y1="3" x2="14" y2="3" stroke-width="3"/><line x1="16" y1="11" x2="20" y2="11" stroke-width="3"/>',
+    vjDance: '<rect x="4" y="8" width="6" height="8" transform="rotate(15 7 12)"/><rect x="14" y="6" width="6" height="10" transform="rotate(-10 17 11)"/><circle cx="12" cy="20" r="2"/>',
+    silueta: '<circle cx="12" cy="5" r="2.5"/><path d="M12 8v6M8 10l4 2 4-2M8 22l4-8 4 8"/>',
   };
   return icons[id] || icons.bars;
 }
@@ -1804,6 +1810,34 @@ function startVizLoop() {
     lastFrame = now;
     if (!state.analyser) return;
     state.analyser.getByteFrequencyData(state.freqData);
+
+    // === FAKE DATA FOR YOUTUBE (decorative, not reactive) ===
+    // Google blocks audio access from YouTube iframe, so we simulate
+    if (window._yt && window._yt.active) {
+      const t = now * 0.001;
+      const bins = state.freqData.length;
+      for (let i = 0; i < bins; i++) {
+        // Simulate a moving spectrum that decays with frequency
+        const freqFactor = 1 - (i / bins) * 0.85;
+        const wave1 = Math.sin(t * 2.3 + i * 0.08) * 0.35 + 0.5;
+        const wave2 = Math.sin(t * 5.1 + i * 0.21) * 0.25;
+        const wave3 = Math.sin(t * 0.8 + i * 0.04) * 0.2 + 0.2;
+        const beat = (Math.sin(t * 4.2) > 0.7) ? 0.3 : 0;
+        let v = (wave1 + wave2 + wave3 + beat) * freqFactor;
+        v = Math.max(0, Math.min(1, v));
+        state.freqData[i] = Math.floor(v * 255);
+      }
+      // Also fill timeData (waveform) with synthetic wave
+      const tBins = state.timeData.length;
+      for (let i = 0; i < tBins; i++) {
+        const x = i / tBins;
+        const v = Math.sin(t * 3 + x * 12) * 50 +
+                  Math.sin(t * 7 + x * 28) * 25 +
+                  Math.sin(t * 1.3 + x * 6) * 30;
+        state.timeData[i] = Math.floor(128 + v);
+      }
+    }
+
     const bins = state.freqData.length;
     let bassSum = 0; const bassEnd = Math.floor(bins * 0.08);
     for (let i = 0; i < bassEnd; i++) bassSum += state.freqData[i];
@@ -1822,17 +1856,20 @@ function startVizLoop() {
     ctx.restore();
 
     if (mode === 'bars') drawBarsFull(dt);
+    else if (mode === 'barsPico') drawBarsPico(dt);
     else if (mode === 'radial') drawRadial(dt);
-    else if (mode === 'waves') { state.analyser.getByteTimeDomainData(state.timeData); drawWaves(); }
+    else if (mode === 'waves') { if (!(window._yt && window._yt.active)) state.analyser.getByteTimeDomainData(state.timeData); drawWaves(); }
     else if (mode === 'particles') drawParticles(dt, bass);
     else if (mode === 'grid') drawGrid(dt);
     else if (mode === 'rings') drawRings(dt, bass);
-    else if (mode === 'mirror') { state.analyser.getByteTimeDomainData(state.timeData); drawMirror(); }
+    else if (mode === 'mirror') { if (!(window._yt && window._yt.active)) state.analyser.getByteTimeDomainData(state.timeData); drawMirror(); }
     else if (mode === 'laser') drawLaser(dt, bass);
     else if (mode === 'tunnel') drawTunnel(dt, bass);
     else if (mode === 'starburst') drawStarburst(dt, bass);
     else if (mode === 'matrix') drawMatrix(dt, bass);
     else if (mode === 'plasma') drawPlasma(dt, bass);
+    else if (mode === 'vjDance') drawVjDance(dt, bass);
+    else if (mode === 'silueta') drawSilueta(dt, bass);
   }
   requestAnimationFrame(loop);
 }
@@ -2169,6 +2206,315 @@ function drawPlasma(dt, bass) {
   ctx.globalAlpha = 1;
 }
 
+// ========================================
+// BARS WITH PICO (cap that falls slowly)
+// ========================================
+function drawBarsPico(dt) {
+  const N = NUM_BARS, data = state.freqData, dataLen = data.length, bars = state.bars, peaks = state.barPeaks;
+  const c1 = themeC(0), c2 = themeC(1), c3 = themeC(2);
+
+  for (let i = 0; i < N; i++) {
+    const t = i / N, logT = Math.pow(t, 1.6);
+    const sB = Math.floor(logT * dataLen * 0.7);
+    const eB = Math.max(sB + 1, Math.floor(Math.pow((i+1)/N, 1.6) * dataLen * 0.7));
+    let sum = 0;
+    for (let j = sB; j < eB; j++) sum += data[j];
+    const target = (sum / (eB - sB)) / 255;
+    // Bar climbs fast, falls slow
+    bars[i] += (target - bars[i]) * (target > bars[i] ? 0.6 : 0.15);
+    // PICO (cap): jumps up instantly when bar reaches new high, falls SLOWLY
+    if (bars[i] > peaks[i]) {
+      peaks[i] = bars[i];
+    } else {
+      peaks[i] -= dt * 0.18;  // fall slow - this creates the "hat floating" effect
+    }
+    if (peaks[i] < 0) peaks[i] = 0;
+  }
+
+  const padX = cssW * 0.04, usableW = cssW - padX * 2;
+  const gap = usableW * 0.012, barW = (usableW - gap * (N - 1)) / N;
+  const baseline = cssH * 0.78, maxBarH = cssH * 0.68;
+
+  // Bar gradient
+  const grad = ctx.createLinearGradient(0, baseline - maxBarH, 0, baseline);
+  grad.addColorStop(0, c3);
+  grad.addColorStop(0.4, c2);
+  grad.addColorStop(1, c1);
+
+  // Draw bars (solid)
+  ctx.fillStyle = grad;
+  for (let i = 0; i < N; i++) {
+    const v = bars[i];
+    if (v < 0.005) continue;
+    const h = v * maxBarH;
+    const x = padX + i * (barW + gap);
+    roundRect(ctx, x, baseline - h, barW, h, Math.min(barW/2, 4));
+    ctx.fill();
+  }
+
+  // Draw PICOS (caps) - these are what makes this mode special
+  // The cap is a glowing horizontal bar that stays above the column
+  for (let i = 0; i < N; i++) {
+    if (peaks[i] < 0.02) continue;
+    const x = padX + i * (barW + gap);
+    const yPeak = baseline - peaks[i] * maxBarH;
+    const capH = 4;
+
+    // Glow underneath
+    ctx.fillStyle = c3;
+    ctx.globalAlpha = 0.4;
+    ctx.fillRect(x - 2, yPeak - 1, barW + 4, capH + 2);
+
+    // Solid cap
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#ffffff';
+    roundRect(ctx, x, yPeak - capH, barW, capH, 2);
+    ctx.fill();
+
+    // Bright glow color on top
+    ctx.fillStyle = c3;
+    ctx.globalAlpha = 0.8;
+    roundRect(ctx, x, yPeak - capH + 1, barW, 2, 1);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Reflection underneath (mirrored faded version)
+  ctx.save();
+  ctx.globalAlpha = 0.2;
+  ctx.fillStyle = grad;
+  for (let i = 0; i < N; i++) {
+    const v = bars[i];
+    if (v < 0.005) continue;
+    const h = v * maxBarH;
+    const x = padX + i * (barW + gap);
+    roundRect(ctx, x, baseline + 2, barW, h * 0.35, Math.min(barW/2, 4));
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ========================================
+// VJ DANCE - geometric shapes dancing with the beat
+// ========================================
+let vjShapes = null;
+function initVjShapes() {
+  vjShapes = [];
+  for (let i = 0; i < 6; i++) {
+    vjShapes.push({
+      x: 0.2 + Math.random() * 0.6,
+      y: 0.3 + Math.random() * 0.4,
+      size: 30 + Math.random() * 40,
+      angle: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 2,
+      type: Math.floor(Math.random() * 3),
+      colorIdx: i % 4,
+      pulse: Math.random()
+    });
+  }
+}
+function drawVjDance(dt, bass) {
+  if (!vjShapes) initVjShapes();
+  const t = performance.now() * 0.001;
+  const data = state.freqData;
+  // Get freq distribution
+  const lowBass = (data[1] + data[2] + data[3]) / 3 / 255;
+  const mids = (data[15] + data[25] + data[35]) / 3 / 255;
+  const highs = (data[60] + data[80] + data[100]) / 3 / 255;
+
+  // Background glow that pulses with bass
+  const cx = cssW/2, cy = cssH/2;
+  const glowR = Math.min(cssW, cssH) * (0.3 + lowBass * 0.5);
+  const bgGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
+  bgGrad.addColorStop(0, themeC(0) + '40');
+  bgGrad.addColorStop(1, themeC(0) + '00');
+  ctx.fillStyle = bgGrad;
+  ctx.globalAlpha = 0.5 + bass * 0.5;
+  ctx.fillRect(0, 0, cssW, cssH);
+  ctx.globalAlpha = 1;
+
+  // Each shape "dances" with the music
+  for (let i = 0; i < vjShapes.length; i++) {
+    const s = vjShapes[i];
+    // Drive by different frequency band
+    const energy = [lowBass, mids, highs, bass][i % 4];
+    s.angle += s.spin * dt * (0.5 + energy * 4);
+    s.pulse = s.pulse * 0.9 + energy * 0.1;
+
+    const x = s.x * cssW + Math.sin(t * 0.6 + i) * 30;
+    const y = s.y * cssH + Math.cos(t * 0.4 + i * 0.7) * 25;
+    const size = s.size * (0.8 + s.pulse * 1.2 + Math.sin(t * 3 + i) * 0.15);
+    const col = themeC(s.colorIdx);
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(s.angle);
+
+    // Outer glow
+    ctx.shadowBlur = 20 + energy * 30;
+    ctx.shadowColor = col;
+    ctx.strokeStyle = col;
+    ctx.fillStyle = col;
+    ctx.lineWidth = 3;
+    ctx.globalAlpha = 0.85;
+
+    if (s.type === 0) {
+      // Square
+      ctx.strokeRect(-size/2, -size/2, size, size);
+      ctx.globalAlpha = 0.2;
+      ctx.fillRect(-size/2, -size/2, size, size);
+    } else if (s.type === 1) {
+      // Triangle
+      ctx.beginPath();
+      ctx.moveTo(0, -size/2);
+      ctx.lineTo(size/2, size/2);
+      ctx.lineTo(-size/2, size/2);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.globalAlpha = 0.2;
+      ctx.fill();
+    } else {
+      // Hexagon
+      ctx.beginPath();
+      for (let j = 0; j < 6; j++) {
+        const a = (j / 6) * Math.PI * 2;
+        const px = Math.cos(a) * size/2;
+        const py = Math.sin(a) * size/2;
+        if (j === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.stroke();
+      ctx.globalAlpha = 0.2;
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur = 0;
+}
+
+// ========================================
+// SILUETA - dancing human silhouette
+// ========================================
+function drawSilueta(dt, bass) {
+  const t = performance.now() * 0.001;
+  const data = state.freqData;
+  const lowBass = (data[1] + data[2] + data[3]) / 3 / 255;
+  const mids = (data[15] + data[25] + data[35]) / 3 / 255;
+  const highs = (data[60] + data[80]) / 2 / 255;
+
+  // Colored background gradient that pulses
+  const c1 = themeC(0), c2 = themeC(1), c3 = themeC(2);
+  const bgGrad = ctx.createLinearGradient(0, 0, cssW, cssH);
+  bgGrad.addColorStop(0, c1);
+  bgGrad.addColorStop(0.5, c2);
+  bgGrad.addColorStop(1, c3);
+  ctx.fillStyle = bgGrad;
+  ctx.globalAlpha = 0.4 + bass * 0.4;
+  ctx.fillRect(0, 0, cssW, cssH);
+
+  // Beat pulse rings (radiate from silhouette)
+  const cx = cssW / 2;
+  const baseY = cssH * 0.92;
+  if (bass > 0.4) {
+    const rings = 3;
+    for (let i = 0; i < rings; i++) {
+      const r = 80 + i * 40 + bass * 100;
+      ctx.strokeStyle = c3;
+      ctx.globalAlpha = (1 - i/rings) * bass * 0.6;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, baseY - cssH * 0.3, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  // Silhouette parameters - animated by music
+  const dance = Math.sin(t * 3) * 15 * (0.5 + mids);
+  const bounce = Math.abs(Math.sin(t * 4)) * 20 * (0.3 + bass);
+  const armWave = Math.sin(t * 2.5) * (Math.PI * 0.3) * (0.5 + mids);
+  const hipSway = Math.sin(t * 3) * 8 * (0.5 + mids);
+
+  // Build silhouette - black filled shape
+  const scale = Math.min(cssW, cssH) / 600;
+  const bodyW = 50 * scale;
+  const bodyH = 120 * scale;
+
+  ctx.fillStyle = '#000';
+  ctx.strokeStyle = '#000';
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  const totalH = cssH * 0.7;
+  const headR = 25 * scale * (1 + highs * 0.15);
+  const baseFootY = cssH * 0.92 - bounce;
+
+  // Body parts based on music
+  const hipY = baseFootY - bodyH * 1.2;
+  const shoulderY = hipY - bodyH * 0.7;
+  const headY = shoulderY - bodyH * 0.4;
+
+  // === LEGS ===
+  ctx.lineWidth = 18 * scale;
+  // Left leg
+  ctx.beginPath();
+  ctx.moveTo(cx + hipSway - 12 * scale, hipY);
+  const leftKneeX = cx + hipSway - 18 * scale + Math.sin(t * 4) * 10;
+  const leftKneeY = hipY + bodyH * 0.5;
+  ctx.lineTo(leftKneeX, leftKneeY);
+  ctx.lineTo(cx + hipSway - 22 * scale, baseFootY);
+  ctx.stroke();
+  // Right leg
+  ctx.beginPath();
+  ctx.moveTo(cx + hipSway + 12 * scale, hipY);
+  const rightKneeX = cx + hipSway + 18 * scale - Math.sin(t * 4) * 10;
+  const rightKneeY = hipY + bodyH * 0.5;
+  ctx.lineTo(rightKneeX, rightKneeY);
+  ctx.lineTo(cx + hipSway + 22 * scale, baseFootY);
+  ctx.stroke();
+
+  // === TORSO ===
+  ctx.lineWidth = 32 * scale;
+  ctx.beginPath();
+  ctx.moveTo(cx + hipSway, hipY);
+  ctx.lineTo(cx + dance * 0.3, shoulderY);
+  ctx.stroke();
+
+  // === ARMS ===
+  ctx.lineWidth = 14 * scale;
+  const armLen = bodyH * 0.55;
+  // Left arm (raised/waving)
+  const leftArmAngle = -Math.PI/2 - 0.4 + armWave;
+  const leftElbowX = cx + dance * 0.3 - 22 * scale + Math.cos(leftArmAngle) * armLen * 0.5;
+  const leftElbowY = shoulderY + Math.sin(leftArmAngle) * armLen * 0.5;
+  const leftHandX = leftElbowX + Math.cos(leftArmAngle + 0.4) * armLen * 0.5;
+  const leftHandY = leftElbowY + Math.sin(leftArmAngle + 0.4) * armLen * 0.5;
+  ctx.beginPath();
+  ctx.moveTo(cx + dance * 0.3 - 22 * scale, shoulderY);
+  ctx.lineTo(leftElbowX, leftElbowY);
+  ctx.lineTo(leftHandX, leftHandY);
+  ctx.stroke();
+  // Right arm (opposite)
+  const rightArmAngle = -Math.PI/2 + 0.4 - armWave;
+  const rightElbowX = cx + dance * 0.3 + 22 * scale + Math.cos(rightArmAngle) * armLen * 0.5;
+  const rightElbowY = shoulderY + Math.sin(rightArmAngle) * armLen * 0.5;
+  const rightHandX = rightElbowX + Math.cos(rightArmAngle - 0.4) * armLen * 0.5;
+  const rightHandY = rightElbowY + Math.sin(rightArmAngle - 0.4) * armLen * 0.5;
+  ctx.beginPath();
+  ctx.moveTo(cx + dance * 0.3 + 22 * scale, shoulderY);
+  ctx.lineTo(rightElbowX, rightElbowY);
+  ctx.lineTo(rightHandX, rightHandY);
+  ctx.stroke();
+
+  // === HEAD ===
+  ctx.beginPath();
+  ctx.arc(cx + dance, headY, headR, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.globalAlpha = 1;
+}
+
 function roundRect(ctx, x, y, w, h, r) {
   if (h < r * 2) r = h / 2;
   if (w < r * 2) r = w / 2;
@@ -2373,17 +2719,31 @@ document.addEventListener('gesturestart', e => e.preventDefault());
 
   // History
   function addToHistory(videoId) {
+    // Remove if already exists (will re-add at top)
     ytState.history = ytState.history.filter(h => h.id !== videoId);
     ytState.history.unshift({ id: videoId, title: '', author: '', date: Date.now() });
     if (ytState.history.length > 30) ytState.history = ytState.history.slice(0, 30);
     saveHist();
+    renderHistory();  // Force render immediately so user sees it
   }
   function updateYtHistTitle(videoId, title, author) {
     const item = ytState.history.find(h => h.id === videoId);
-    if (item) { item.title = title || ''; item.author = author || ''; saveHist(); renderHistory(); }
+    if (item) {
+      item.title = title || '';
+      item.author = author || '';
+      saveHist();
+      renderHistory();
+    } else {
+      // If somehow not in history, add it with title
+      ytState.history.unshift({ id: videoId, title: title || '', author: author || '', date: Date.now() });
+      if (ytState.history.length > 30) ytState.history = ytState.history.slice(0, 30);
+      saveHist();
+      renderHistory();
+    }
   }
   function saveHist() {
-    try { localStorage.setItem('yt_hist_v1', JSON.stringify(ytState.history)); } catch(_) {}
+    try { localStorage.setItem('yt_hist_v1', JSON.stringify(ytState.history)); }
+    catch(e) { console.warn('save hist fail', e); }
   }
   function renderHistory() {
     const list = $('ytHistList');
