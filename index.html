@@ -2403,115 +2403,213 @@ function drawSilueta(dt, bass) {
   const mids = (data[15] + data[25] + data[35]) / 3 / 255;
   const highs = (data[60] + data[80]) / 2 / 255;
 
-  // Colored background gradient that pulses
-  const c1 = themeC(0), c2 = themeC(1), c3 = themeC(2);
+  // Colored background gradient that pulses (iPod-style)
+  const c1 = themeC(0), c2 = themeC(1), c3 = themeC(2), c4 = themeC(3);
   const bgGrad = ctx.createLinearGradient(0, 0, cssW, cssH);
   bgGrad.addColorStop(0, c1);
   bgGrad.addColorStop(0.5, c2);
   bgGrad.addColorStop(1, c3);
   ctx.fillStyle = bgGrad;
-  ctx.globalAlpha = 0.4 + bass * 0.4;
+  ctx.globalAlpha = 0.55 + bass * 0.35;
   ctx.fillRect(0, 0, cssW, cssH);
+  ctx.globalAlpha = 1;
 
-  // Beat pulse rings (radiate from silhouette)
+  // Soft beat pulse circles (radiate behind silhouette)
   const cx = cssW / 2;
-  const baseY = cssH * 0.92;
-  if (bass > 0.4) {
-    const rings = 3;
-    for (let i = 0; i < rings; i++) {
-      const r = 80 + i * 40 + bass * 100;
-      ctx.strokeStyle = c3;
-      ctx.globalAlpha = (1 - i/rings) * bass * 0.6;
-      ctx.lineWidth = 2;
+  const groundY = cssH * 0.92;
+  if (bass > 0.3) {
+    for (let i = 0; i < 3; i++) {
+      const r = 60 + i * 50 + bass * 120;
+      ctx.strokeStyle = '#fff';
+      ctx.globalAlpha = (1 - i/3) * bass * 0.3;
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(cx, baseY - cssH * 0.3, r, 0, Math.PI * 2);
+      ctx.arc(cx, groundY - cssH * 0.32, r, 0, Math.PI * 2);
       ctx.stroke();
     }
   }
   ctx.globalAlpha = 1;
 
-  // Silhouette parameters - animated by music
-  const dance = Math.sin(t * 3) * 15 * (0.5 + mids);
-  const bounce = Math.abs(Math.sin(t * 4)) * 20 * (0.3 + bass);
-  const armWave = Math.sin(t * 2.5) * (Math.PI * 0.3) * (0.5 + mids);
-  const hipSway = Math.sin(t * 3) * 8 * (0.5 + mids);
+  // Music-driven motion
+  const dance = Math.sin(t * 2.8) * 12 * (0.4 + mids);
+  const bounce = Math.abs(Math.sin(t * 3.5)) * 22 * (0.3 + bass);
+  const armWave = Math.sin(t * 2.2);
+  const hipSway = Math.sin(t * 2.8) * 10 * (0.4 + mids);
+  const breathe = Math.sin(t * 1.5) * 0.04;
 
-  // Build silhouette - black filled shape
-  const scale = Math.min(cssW, cssH) / 600;
-  const bodyW = 50 * scale;
-  const bodyH = 120 * scale;
+  // Body dimensions
+  const scale = Math.min(cssW, cssH) / 580;
+  const baseFootY = groundY - bounce;
+  const headR = 28 * scale * (1 + highs * 0.12 + breathe);
+  const neckLen = 12 * scale;
+  const torsoLen = 110 * scale;
+  const legLen = 130 * scale;
+  const armLen = 110 * scale;
 
-  ctx.fillStyle = '#000';
-  ctx.strokeStyle = '#000';
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
+  const headCX = cx + dance;
+  const headCY = baseFootY - legLen - torsoLen - headR - neckLen;
+  const shoulderY = headCY + headR + neckLen;
+  const shoulderCX = cx + dance * 0.5;
+  const hipY = shoulderY + torsoLen;
+  const hipCX = cx + hipSway;
 
-  const totalH = cssH * 0.7;
-  const headR = 25 * scale * (1 + highs * 0.15);
-  const baseFootY = cssH * 0.92 - bounce;
+  // Save state, apply blur for soft-edge silhouette
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 25 * scale;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 8 * scale;
+  ctx.filter = 'blur(1.5px)';
+  ctx.fillStyle = 'rgba(0,0,0,0.95)';
 
-  // Body parts based on music
-  const hipY = baseFootY - bodyH * 1.2;
-  const shoulderY = hipY - bodyH * 0.7;
-  const headY = shoulderY - bodyH * 0.4;
-
-  // === LEGS ===
-  ctx.lineWidth = 18 * scale;
-  // Left leg
+  // Build one continuous body path for smooth silhouette
+  // === HEAD === (ellipse, slightly tilted)
   ctx.beginPath();
-  ctx.moveTo(cx + hipSway - 12 * scale, hipY);
-  const leftKneeX = cx + hipSway - 18 * scale + Math.sin(t * 4) * 10;
-  const leftKneeY = hipY + bodyH * 0.5;
-  ctx.lineTo(leftKneeX, leftKneeY);
-  ctx.lineTo(cx + hipSway - 22 * scale, baseFootY);
-  ctx.stroke();
-  // Right leg
-  ctx.beginPath();
-  ctx.moveTo(cx + hipSway + 12 * scale, hipY);
-  const rightKneeX = cx + hipSway + 18 * scale - Math.sin(t * 4) * 10;
-  const rightKneeY = hipY + bodyH * 0.5;
-  ctx.lineTo(rightKneeX, rightKneeY);
-  ctx.lineTo(cx + hipSway + 22 * scale, baseFootY);
-  ctx.stroke();
-
-  // === TORSO ===
-  ctx.lineWidth = 32 * scale;
-  ctx.beginPath();
-  ctx.moveTo(cx + hipSway, hipY);
-  ctx.lineTo(cx + dance * 0.3, shoulderY);
-  ctx.stroke();
-
-  // === ARMS ===
-  ctx.lineWidth = 14 * scale;
-  const armLen = bodyH * 0.55;
-  // Left arm (raised/waving)
-  const leftArmAngle = -Math.PI/2 - 0.4 + armWave;
-  const leftElbowX = cx + dance * 0.3 - 22 * scale + Math.cos(leftArmAngle) * armLen * 0.5;
-  const leftElbowY = shoulderY + Math.sin(leftArmAngle) * armLen * 0.5;
-  const leftHandX = leftElbowX + Math.cos(leftArmAngle + 0.4) * armLen * 0.5;
-  const leftHandY = leftElbowY + Math.sin(leftArmAngle + 0.4) * armLen * 0.5;
-  ctx.beginPath();
-  ctx.moveTo(cx + dance * 0.3 - 22 * scale, shoulderY);
-  ctx.lineTo(leftElbowX, leftElbowY);
-  ctx.lineTo(leftHandX, leftHandY);
-  ctx.stroke();
-  // Right arm (opposite)
-  const rightArmAngle = -Math.PI/2 + 0.4 - armWave;
-  const rightElbowX = cx + dance * 0.3 + 22 * scale + Math.cos(rightArmAngle) * armLen * 0.5;
-  const rightElbowY = shoulderY + Math.sin(rightArmAngle) * armLen * 0.5;
-  const rightHandX = rightElbowX + Math.cos(rightArmAngle - 0.4) * armLen * 0.5;
-  const rightHandY = rightElbowY + Math.sin(rightArmAngle - 0.4) * armLen * 0.5;
-  ctx.beginPath();
-  ctx.moveTo(cx + dance * 0.3 + 22 * scale, shoulderY);
-  ctx.lineTo(rightElbowX, rightElbowY);
-  ctx.lineTo(rightHandX, rightHandY);
-  ctx.stroke();
-
-  // === HEAD ===
-  ctx.beginPath();
-  ctx.arc(cx + dance, headY, headR, 0, Math.PI * 2);
+  ctx.ellipse(headCX, headCY, headR * 0.95, headR * 1.05, dance * 0.01, 0, Math.PI * 2);
   ctx.fill();
 
+  // === NECK === (subtle taper from head to torso)
+  const neckW = headR * 0.45;
+  ctx.beginPath();
+  ctx.moveTo(headCX - neckW, headCY + headR * 0.85);
+  ctx.quadraticCurveTo(headCX, headCY + headR * 0.9, headCX + neckW, headCY + headR * 0.85);
+  ctx.lineTo(shoulderCX + neckW * 1.2, shoulderY);
+  ctx.lineTo(shoulderCX - neckW * 1.2, shoulderY);
+  ctx.closePath();
+  ctx.fill();
+
+  // === TORSO === (curved, hourglass-ish)
+  const shoulderW = 52 * scale;
+  const waistW = 38 * scale;
+  const hipW = 48 * scale;
+  ctx.beginPath();
+  ctx.moveTo(shoulderCX - shoulderW, shoulderY);
+  // Left side curve
+  ctx.bezierCurveTo(
+    shoulderCX - shoulderW - 5 * scale, shoulderY + torsoLen * 0.3,
+    hipCX - waistW, shoulderY + torsoLen * 0.55,
+    hipCX - hipW, hipY
+  );
+  // Bottom (hips)
+  ctx.lineTo(hipCX + hipW, hipY);
+  // Right side curve back up
+  ctx.bezierCurveTo(
+    hipCX + waistW, shoulderY + torsoLen * 0.55,
+    shoulderCX + shoulderW + 5 * scale, shoulderY + torsoLen * 0.3,
+    shoulderCX + shoulderW, shoulderY
+  );
+  ctx.closePath();
+  ctx.fill();
+
+  // === LEGS === (curved, with thigh bulge)
+  const stanceWidth = 22 * scale;
+  const legAngleL = Math.sin(t * 3.5) * 0.15;
+  const legAngleR = -Math.sin(t * 3.5) * 0.15;
+
+  function drawLeg(side) {
+    const sign = side === 'left' ? -1 : 1;
+    const hipX = hipCX + sign * stanceWidth;
+    const angle = side === 'left' ? legAngleL : legAngleR;
+    const kneeX = hipX + sign * 8 * scale + Math.sin(angle) * 10 * scale;
+    const kneeY = hipY + legLen * 0.5;
+    const footX = hipX + sign * 18 * scale + Math.sin(angle) * 5 * scale;
+    const footY = baseFootY;
+
+    // Upper leg (thigh)
+    ctx.beginPath();
+    ctx.moveTo(hipX - 18 * scale, hipY);
+    ctx.bezierCurveTo(
+      hipX - 22 * scale, hipY + legLen * 0.15,
+      kneeX - 12 * scale, kneeY - 5 * scale,
+      kneeX - 9 * scale, kneeY
+    );
+    ctx.lineTo(kneeX + 9 * scale, kneeY);
+    ctx.bezierCurveTo(
+      kneeX + 12 * scale, kneeY - 5 * scale,
+      hipX + 22 * scale, hipY + legLen * 0.15,
+      hipX + 18 * scale, hipY
+    );
+    ctx.closePath();
+    ctx.fill();
+
+    // Lower leg (calf to foot)
+    ctx.beginPath();
+    ctx.moveTo(kneeX - 9 * scale, kneeY);
+    ctx.bezierCurveTo(
+      kneeX - 11 * scale, kneeY + legLen * 0.25,
+      footX - 10 * scale, footY - 12 * scale,
+      footX - 13 * scale, footY
+    );
+    // Foot
+    ctx.lineTo(footX + 15 * scale, footY);
+    ctx.bezierCurveTo(
+      footX + 10 * scale, footY - 12 * scale,
+      kneeX + 11 * scale, kneeY + legLen * 0.25,
+      kneeX + 9 * scale, kneeY
+    );
+    ctx.closePath();
+    ctx.fill();
+  }
+  drawLeg('left');
+  drawLeg('right');
+
+  // === ARMS === (curved with elbow bend)
+  function drawArm(side) {
+    const sign = side === 'left' ? -1 : 1;
+    // Arm waves up/down with music
+    const baseAngle = side === 'left' ? -Math.PI/2 - 0.5 : -Math.PI/2 + 0.5;
+    const wave = (side === 'left' ? armWave : -armWave) * 0.7 * (0.4 + mids);
+    const armAng = baseAngle + wave;
+
+    const shoulderX = shoulderCX + sign * shoulderW * 0.85;
+    const shoulderJointY = shoulderY + 5 * scale;
+    const elbowX = shoulderX + Math.cos(armAng) * armLen * 0.5;
+    const elbowY = shoulderJointY + Math.sin(armAng) * armLen * 0.5;
+    const handAng = armAng + sign * (0.6 + Math.sin(t * 4) * 0.3);
+    const handX = elbowX + Math.cos(handAng) * armLen * 0.5;
+    const handY = elbowY + Math.sin(handAng) * armLen * 0.5;
+
+    // Upper arm (curved tube)
+    const armW = 15 * scale;
+    const armW2 = 12 * scale;
+    function tubeBezier(x1, y1, x2, y2, w1, w2) {
+      const dx = x2 - x1, dy = y2 - y1;
+      const len = Math.sqrt(dx*dx + dy*dy) || 1;
+      const nx = -dy / len, ny = dx / len;
+      ctx.beginPath();
+      ctx.moveTo(x1 + nx * w1, y1 + ny * w1);
+      ctx.lineTo(x2 + nx * w2, y2 + ny * w2);
+      ctx.lineTo(x2 - nx * w2, y2 - ny * w2);
+      ctx.lineTo(x1 - nx * w1, y1 - ny * w1);
+      ctx.closePath();
+      ctx.fill();
+      // Joint dots for smooth connection
+      ctx.beginPath();
+      ctx.arc(x1, y1, w1, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x2, y2, w2, 0, Math.PI*2); ctx.fill();
+    }
+    tubeBezier(shoulderX, shoulderJointY, elbowX, elbowY, armW, armW2);
+    tubeBezier(elbowX, elbowY, handX, handY, armW2, armW2 * 0.8);
+    // Hand
+    ctx.beginPath();
+    ctx.arc(handX, handY, armW2 * 0.9, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  drawArm('left');
+  drawArm('right');
+
+  ctx.restore();
+
+  // Highlight on head (subtle gloss for character)
+  ctx.save();
+  ctx.filter = 'blur(3px)';
+  ctx.globalAlpha = 0.12;
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(headCX - headR * 0.3, headCY - headR * 0.4, headR * 0.3, headR * 0.5, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
   ctx.globalAlpha = 1;
 }
 
