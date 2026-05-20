@@ -1,25 +1,43 @@
 {
-  "name": "NEONWAVE Car",
+  "name": "NEONWAVE",
   "short_name": "NEONWAVE",
-  "description": "Reproductor de musica con visualizaciones reactivas",
-  "start_url": "./index.html",
+  "description": "Reproductor de musica con visualizaciones",
+  "start_url": "./index.html?source=pwa",
   "scope": "./",
+  "id": "neonwave-car-app",
   "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
   "orientation": "landscape",
   "background_color": "#050309",
-  "theme_color": "#0a0612",
+  "theme_color": "#050309",
+  "categories": ["music", "entertainment", "multimedia"],
+  "lang": "es",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
