@@ -985,29 +985,50 @@
   body.viz-bg .toast,
   body.viz-bg .yt-mini { z-index: 100 !important; }
 
-  /* === IMMERSIVE FULLSCREEN (prevent UI bars from squeezing app) === */
+  /* === FULL SCREEN SIZING (works on old Android car radios too) === */
   html, body {
-    /* Use small viewport units so Android navigation bar doesn't squeeze layout */
-    height: 100svh !important;
-    min-height: 100svh;
-    max-height: 100lvh;
+    /* Use plain vh/% which work everywhere; fallback for old browsers */
+    height: 100% !important;
+    min-height: 100vh;
+    width: 100% !important;
+    min-width: 100vw;
+    margin: 0 !important;
+    padding: 0 !important;
   }
-  /* When Android shows/hides system bars, layout stays stable */
+  /* Modern browsers: use svh/lvh if supported (but don't depend on them) */
+  @supports (height: 100svh) {
+    html, body {
+      min-height: 100svh;
+    }
+  }
+  /* Rotator must always fill the screen no matter what */
   .rotator {
-    height: 100lvh !important;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
   }
   @media (orientation: portrait) {
     .rotator {
-      height: 100lvw !important;
-      width: 100lvh !important;
+      /* In portrait, rotate and swap dimensions */
+      transform: rotate(90deg);
+      transform-origin: center center;
+      width: 100vh !important;
+      height: 100vw !important;
+      top: 50% !important;
+      left: 50% !important;
+      inset: auto !important;
+      margin-top: -50vw !important;
+      margin-left: -50vh !important;
     }
   }
-  /* Hide system UI hints (where possible) */
-  body { -webkit-user-select: none; user-select: none; }
-  /* Tell Android we want a fullscreen experience */
-  @media (display-mode: fullscreen), (display-mode: standalone) {
-    html, body { height: 100vh !important; }
+  /* App fills rotator */
+  .app {
+    width: 100% !important;
+    height: 100% !important;
   }
+  /* Hide system UI hints */
+  body { -webkit-user-select: none; user-select: none; }
 
   /* === NATIVE MODAL (replaces ugly browser confirm) === */
   .nw-modal-mask {
